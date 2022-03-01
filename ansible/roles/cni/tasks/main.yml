@@ -1,0 +1,24 @@
+---
+  - block:
+    - name: Copy OVS kmod rpm file to tmp folder
+      copy:
+        src: openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
+        dest: /tmp/openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
+
+    - name: Install OVS kmod rpm package
+      yum:
+        name: /tmp/openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
+        disable_gpg_check: yes
+        state: present
+
+    - name: Enable kernel modules
+      template:
+        src: templates/module.conf.j2
+        dest: "/etc/modules-load.d/{{ item.name }}.conf"
+      with_items:
+      - { name: 'vxlan', kernel_module: 'vxlan' }
+      - { name: 'geneve', kernel_module: 'geneve' }
+      - { name: 'gre', kernel_module: 'gre' }
+      - { name: 'iptables', kernel_module: 'ip_tables' }
+
+    when: ansible_os_family == "Rocky"

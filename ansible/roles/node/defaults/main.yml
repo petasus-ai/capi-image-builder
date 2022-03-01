@@ -1,0 +1,108 @@
+# Copyright 2018 The Kubernetes Authors.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+# http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+common_rpms:
+- audit
+- ca-certificates
+- conntrack-tools
+- chrony
+- curl
+- jq
+- python3-pip
+- socat
+- sysstat
+- yum-utils
+
+# Used for AmazonLinux-2 distributions
+al2_rpms:
+- ebtables
+- python-netifaces
+- python-requests
+
+# Used for RedHat based distributions ==  7 (ex. RHEL-7, CentOS-7 etc.)
+rh7_rpms:
+- ebtables
+- python-netifaces
+- python-requests
+
+# Used for RedHat based distributions ==  8 (ex. RHEL-8, RockyLinux-8 etc.)
+rh8_rpms:
+- nftables
+- python3-netifaces
+- python3-requests
+
+common_debs:
+- auditd
+- apt-transport-https
+- conntrack
+- chrony
+- curl
+- ebtables
+- jq
+- gnupg
+- libnetfilter-acct1
+- libnetfilter-cttimeout1
+- libnetfilter-log1
+- python3-distutils
+- python3-netifaces
+- python3-pip
+- socat
+
+common_photon_rpms:
+- audit
+- apparmor-parser
+- conntrack-tools
+- chrony
+- dbus-python3
+- distrib-compat
+- ebtables
+- jq
+- net-tools
+- openssl-c_rehash
+- python3-pygobject
+- python-netifaces
+- python3-pip
+- python-requests
+- rng-tools
+- socat
+- tar
+- unzip
+
+common_virt_rpms:
+- open-vm-tools
+
+common_virt_debs:
+- linux-cloud-tools-virtual
+- linux-tools-virtual
+- open-vm-tools
+
+common_virt_photon_rpms:
+- open-vm-tools
+
+common_raw_rpms: []
+
+common_raw_debs:
+- linux-cloud-tools-generic
+- linux-tools-generic
+
+common_raw_photon_rpms: []
+
+#photon does not have backward compatibility for legacy distro behavior for sysctl.conf by default
+#as it uses systemd-sysctl. set this var so we can use for sysctl conf file value.
+sysctl_conf_file: "{{ '/etc/sysctl.d/99-sysctl.conf' if ansible_os_family == 'VMware Photon OS' else '/etc/sysctl.conf' }}"
+
+pause_image: "k8s.gcr.io/pause:3.6"
+containerd_additional_settings: null
+leak_local_mdns_to_dns: false
+build_target: "virt"

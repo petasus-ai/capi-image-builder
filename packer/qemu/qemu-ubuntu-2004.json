@@ -1,0 +1,13 @@
+{
+  "boot_command_prefix": "<esc><wait><esc><wait><enter><wait>/install/vmlinuz auto console-setup/ask_detect=false console-setup/layoutcode=us console-setup/modelcode=pc105 debconf/frontend=noninteractive debian-installer=en_US fb=false initrd=/install/initrd.gz kbd-chooser/method=us keyboard-configuration/layout=USA keyboard-configuration/variant=USA locale=en_US netcfg/get_domain=local netcfg/get_hostname=localhost grub-installer/bootdev=/dev/sda preseed/url=",
+  "boot_command_suffix": "/20.04/preseed.cfg -- <wait><enter><wait>",
+  "build_name": "ubuntu-2004",
+  "distro_name": "ubuntu",
+  "ssh_username": "ubuntu",
+  "guest_os_type": "ubuntu-64",
+  "iso_checksum": "3d7282d3e92bd2547db9d26590f4a951cead31a10a6470b18ef0848f83db2051",
+  "iso_checksum_type": "sha256",
+  "iso_url": "https://cloud-images.ubuntu.com/releases/focal/release-20220207/ubuntu-20.04-server-cloudimg-amd64.img",
+  "os_display_name": "Ubuntu 20.04",
+  "shutdown_command": "shutdown -P now"
+}
