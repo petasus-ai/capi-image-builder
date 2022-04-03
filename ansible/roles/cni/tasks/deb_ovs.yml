@@ -1,0 +1,19 @@
+---
+  - block:
+    - name: Copy OVS dataplane dkms deb file to tmp folder
+      copy:
+        src: openvswitch-datapath-dkms_2.15.3-1_all.deb
+        dest: /tmp/openvswitch-datapath-dkms_2.15.3-1_all.deb
+
+    - name: Remove default openvswitch module
+      file:
+        path: "/lib/modules/{{ ansible_kernel }}/kernel/net/openvswitch"
+        state: absent        
+
+    - name: Install OVS dataplane dkms deb package
+      apt:
+        deb: /tmp/openvswitch-datapath-dkms_2.15.3-1_all.deb
+        state: present
+        update_cache: yes
+
+    when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"

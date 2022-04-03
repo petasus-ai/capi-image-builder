@@ -48,6 +48,9 @@
   loop: "{{ extra_repos.split() }}"
   when: extra_repos != ""
 
+- name: Mask kernel dependencies
+  command: "apt-mark hold linux-headers-generic linux-headers-virtual linux-image-virtual linux-virtual"
+
 - name: perform a dist-upgrade
   apt:
     force_apt_get: True

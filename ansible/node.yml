@@ -36,6 +36,8 @@
     - include_role:
         name: cni
     - include_role:
+        name: addons
+    - include_role:
         name: sysprep
 
   environment:
