@@ -1,0 +1,9 @@
+---
+  - block:
+    - name: Install IPVS package
+      apt:
+        name: ipvsadm
+        state: present
+        update_cache: yes
+
+    when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"

@@ -1,9 +1,15 @@
 ---
   - block:
     - include_tasks: el_ovs.yml
-      when: ansible_distribution == "Rocky" and ansible_os_family == "RedHat"
+      when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
 
     - include_tasks: deb_ovs.yml
+      when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
+
+    - include_tasks: el_ipvs.yml
+      when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
+
+    - include_tasks: deb_ipvs.yml
       when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
 
     - name: Enable kernel modules

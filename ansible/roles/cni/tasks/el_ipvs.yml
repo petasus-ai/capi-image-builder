@@ -1,0 +1,8 @@
+---
+  - block:
+    - name: Install IPVS package
+      yum:
+        name: ipvsadm
+        state: present
+
+    when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"

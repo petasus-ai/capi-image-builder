@@ -11,14 +11,4 @@
         disable_gpg_check: yes
         state: present
 
-    - name: Enable kernel modules
-      template:
-        src: templates/module.conf.j2
-        dest: "/etc/modules-load.d/{{ item.name }}.conf"
-      with_items:
-      - { name: 'vxlan', kernel_module: 'vxlan' }
-      - { name: 'geneve', kernel_module: 'geneve' }
-      - { name: 'gre', kernel_module: 'gre' }
-      - { name: 'iptables', kernel_module: 'ip_tables' }
-
-    when: ansible_os_family == "Rocky"
+    when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
