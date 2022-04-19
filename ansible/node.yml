@@ -38,6 +38,8 @@
     - include_role:
         name: addons
     - include_role:
+        name: firewall
+    - include_role:
         name: sysprep
 
   environment:

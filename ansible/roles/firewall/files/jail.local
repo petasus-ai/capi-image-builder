@@ -1,0 +1,9 @@
+[DEFAULT]
+bantime = 1h
+findtime = 60
+bantime.increment = true
+
+[sshd]
+enabled = true
+port = ssh
+mode = aggressive

@@ -1,0 +1,179 @@
+---
+- name: Install firewalld package
+  yum:
+    name: firewalld
+    state: present
+
+- name: Start and enable firewall daemon
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: permit kubernetes API server port 6443/tcp
+  ansible.posix.firewalld:
+    port: 6443/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit etcd service/client API port 2379-2380/tcp
+  ansible.posix.firewalld:
+    port: 2379-2380/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit kubelet API port 10250/tcp (secured)
+  ansible.posix.firewalld:
+    port: 10250/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit kubelet API port 10255/tcp (unsecured)
+  ansible.posix.firewalld:
+    port: 10255/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit kube-scheduler port 10251/tcp
+  ansible.posix.firewalld:
+    port: 10251/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit kube-controller-manager port 10252/tcp
+  ansible.posix.firewalld:
+    port: 10252/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit nodeports port 30000-32767/tcp
+  ansible.posix.firewalld:
+    port: 30000-32767/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) vxlan port 4789/udp
+  ansible.posix.firewalld:
+    port: 4789/udp
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) geneve port 6081/udp
+  ansible.posix.firewalld:
+    port: 6081/udp
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) gre
+  ansible.posix.firewalld:
+    rich_rule: rule protocol value=gre accept
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) IPSEC ESP
+  ansible.posix.firewalld:
+    rich_rule: rule protocol value=esp accept
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) IPSEC AH
+  ansible.posix.firewalld:
+    rich_rule: rule protocol value=ah accept
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) IPSEC port 500/udp
+  ansible.posix.firewalld:
+    port: 500/udp
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) IPSEC port 4500/udp
+  ansible.posix.firewalld:
+    port: 4500/udp
+    permanent: yes
+    state: enabled
+
+- name: permit (antrea) stt port 7471/tcp
+  ansible.posix.firewalld:
+    port: 7471/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit antrea ingress port 10349/tcp
+  ansible.posix.firewalld:
+    port: 10349/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit antrea controller 10350/tcp
+  ansible.posix.firewalld:
+    port: 10350/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit cilium vxlan port 8472/udp
+  ansible.posix.firewalld:
+    port: 8472/udp
+    permanent: yes
+    state: enabled
+
+- name: permit cilium healthcheck port 4240/tcp
+  ansible.posix.firewalld:
+    port: 4240/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit calico BGP port 179/tcp
+  ansible.posix.firewalld:
+    port: 179/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit calico Typha port 5473/tcp
+  ansible.posix.firewalld:
+    port: 5473/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit calico IP-IP protocol
+  ansible.posix.firewalld:
+    rich_rule: rule protocol value=ipip accept
+    permanent: yes
+    state: enabled
+
+- name: permit prometheus metrics port 9090/tcp
+  ansible.posix.firewalld:
+    port: 9090/tcp
+    permanent: yes
+    state: enabled
+
+- name: remove SSH service
+  ansible.posix.firewalld:
+    service: ssh
+    permanent: yes
+    state: disabled
+
+- name: limit SSH service
+  ansible.posix.firewalld:
+    rich_rule: rule service name="ssh" limit value="5/m" accept limit value="5/m"
+    permanent: yes
+    state: enabled
+
+- name: allow masquerade
+  ansible.posix.firewalld:
+    masquerade: yes
+    state: enabled
+    permanent: yes
+
+- name: reload firewall daemon
+  service:
+    name: firewalld
+    state: reloaded
+    enabled: yes
+
+- name: restart firewall daemon
+  service:
+    name: firewalld
+    state: restarted
+    enabled: yes

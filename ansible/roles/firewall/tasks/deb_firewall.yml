@@ -1,0 +1,163 @@
+---
+- name: install ufw package
+  apt:
+    name: ufw
+    state: present
+    update_cache: yes
+
+- name: start ufw
+  service:
+    name: ufw
+    state: started
+
+- name: allow outgoing traffic
+  community.general.ufw:
+    state: enabled
+    policy: allow
+    direction: outgoing
+
+- name: deny incoming traffic
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: mitigate attack on OpenSSH
+  community.general.ufw:
+    rule: limit
+    port: ssh
+    proto: tcp
+
+- name: permit kubernetes API server port 6443/tcp
+  community.general.ufw:
+    rule: allow
+    port: '6443'
+    proto: tcp
+
+- name: permit etcd service/client API port 2379-2380/tcp
+  community.general.ufw:
+    rule: allow
+    port: '2379:2380'
+    proto: tcp
+
+- name: permit kubelet API port 10250/tcp (secured)
+  community.general.ufw:
+    rule: allow
+    port: '10250'
+    proto: tcp
+
+- name: permit kubelet API port 10255/tcp (unsecured)
+  community.general.ufw:
+    rule: allow
+    port: '10255'
+    proto: tcp
+
+- name: permit kube-scheduler port 10251/tcp
+  community.general.ufw:
+    rule: allow
+    port: '10251'
+    proto: tcp
+
+- name: permit kube-controller-manager port 10252/tcp
+  community.general.ufw:
+    rule: allow
+    port: '10252'
+    proto: tcp
+
+- name: permit nodeports port 30000-32767/tcp
+  community.general.ufw:
+    rule: allow
+    port: '30000:32767'
+    proto: tcp
+
+- name: permit (antrea) vxlan port 4789/udp
+  community.general.ufw:
+    rule: allow
+    port: '4789'
+    proto: udp
+
+- name: permit (antrea) geneve port 6081/udp
+  community.general.ufw:
+    rule: allow
+    port: '6081'
+    proto: udp
+
+- name: permit (antrea) gre
+  community.general.ufw:
+    rule: allow
+    proto: gre
+
+- name: permit (antrea) IPSEC ESP
+  community.general.ufw:
+    rule: allow
+    proto: esp
+
+- name: permit (antrea) IPSEC AH
+  community.general.ufw:
+    rule: allow
+    proto: ah
+
+- name: permit (antrea) IPSEC port 500/udp
+  community.general.ufw:
+    rule: allow
+    port: '500'
+    proto: udp
+
+- name: permit (antrea) IPSEC port 4500/udp
+  community.general.ufw:
+    rule: allow
+    port: '4500'
+    proto: udp
+
+- name: permit (antrea) stt port 7471/tcp
+  community.general.ufw:
+    rule: allow
+    port: '7471'
+    proto: tcp
+
+- name: permit antrea ingress port 10349/tcp
+  community.general.ufw:
+    rule: allow
+    port: '10349'
+    proto: tcp
+
+- name: permit antrea controller 10350/tcp
+  community.general.ufw:
+    rule: allow
+    port: '10350'
+    proto: tcp
+
+- name: permit cilium vxlan port 8472/udp
+  community.general.ufw:
+    rule: allow
+    port: '8472'
+    proto: udp
+
+- name: permit cilium healthcheck port 4240/tcp
+  community.general.ufw:
+    rule: allow
+    port: '4240'
+    proto: tcp
+
+- name: permit calico BGP port 179/tcp
+  community.general.ufw:
+    rule: allow
+    port: '179'
+    proto: tcp
+
+- name: permit calico Typha port 5473/tcp
+  community.general.ufw:
+    rule: allow
+    port: '5473'
+    proto: tcp
+
+- name: permit prometheus metrics port 9090/tcp
+  community.general.ufw:
+    rule: allow
+    port: '9090'
+    proto: tcp 
+
+- name: restart ufw
+  service:
+    name: ufw
+    state: restarted

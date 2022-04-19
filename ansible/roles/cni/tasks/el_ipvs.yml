@@ -5,4 +5,16 @@
         name: ipvsadm
         state: present
 
+    - name: Touch ipvsadm rule file
+      file:
+        path: /etc/sysconfig/ipvsadm
+        state: touch
+        mode: u=rw,g=r,o=r
+
+    - name: Start and enable ipvsadm daemon
+      service:
+        name: ipvsadm
+        state: started
+        enabled: yes
+
     when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
