@@ -109,9 +109,9 @@
     },
     {
       "type":"shell",
-      "execute_command":"echo 'install ansible' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
+      "execute_command":"echo 'install python' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
       "scripts": [
-        "scripts/install-ansible.sh"
+        "scripts/install-python.sh"
       ]
     },
     {
@@ -156,13 +156,6 @@
         "kubernetes_version": "{{user `kubernetes_semver` | replace \"v\" \"\" 1}}"
       },
       "version": "{{user `goss_version`}}"
-    },
-    {
-      "execute_command": "echo 'remove ansible' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
-      "scripts": [
-        "scripts/remove-ansible.sh"
-      ],
-      "type": "shell"
     }
   ],
   "variables": {

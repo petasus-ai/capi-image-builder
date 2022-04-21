@@ -142,9 +142,9 @@
     permanent: yes
     state: enabled
 
-- name: permit prometheus metrics port 9090/tcp
+- name: permit prometheus metrics port 9100/tcp
   ansible.posix.firewalld:
-    port: 9090/tcp
+    port: 9100/tcp
     permanent: yes
     state: enabled
 

@@ -151,10 +151,10 @@
     port: '5473'
     proto: tcp
 
-- name: permit prometheus metrics port 9090/tcp
+- name: permit prometheus metrics port 9100/tcp
   community.general.ufw:
     rule: allow
-    port: '9090'
+    port: '9100'
     proto: tcp 
 
 - name: restart ufw
