@@ -34,6 +34,12 @@
     port: '6443'
     proto: tcp
 
+- name: permit kubernetes API server port 443/tcp
+  community.general.ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+
 - name: permit etcd service/client API port 2379-2380/tcp
   community.general.ufw:
     rule: allow

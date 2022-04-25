@@ -16,6 +16,12 @@
     permanent: yes
     state: enabled
 
+- name: permit kubernetes API server port 443/tcp
+  ansible.posix.firewalld:
+    port: 443/tcp
+    permanent: yes
+    state: enabled
+
 - name: permit etcd service/client API port 2379-2380/tcp
   ansible.posix.firewalld:
     port: 2379-2380/tcp
