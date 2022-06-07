@@ -20,5 +20,14 @@
       - { name: 'vxlan', kernel_module: 'vxlan' }
       - { name: 'geneve', kernel_module: 'geneve' }
       - { name: 'gre', kernel_module: 'gre' }
-      - { name: 'iptables', kernel_module: 'ip_tables' }
       - { name: 'openvswitch', kernel_module: 'openvswitch' }
+
+    - name: Enable ipvs modules
+      template:
+        src: templates/module.conf.j2
+        dest: "/etc/modules-load.d/{{ item.name }}.conf"
+      with_items:
+      - { name: 'ip_vs', kernel_module: 'ip_vs' }
+      - { name: 'ip_vs_rr', kernel_module: 'ip_vs_rr' }
+      - { name: 'ip_vs_wrr', kernel_module: 'ip_vs_wrr' }
+      - { name: 'ip_vs_sh', kernel_module: 'ip_vs_sh' }

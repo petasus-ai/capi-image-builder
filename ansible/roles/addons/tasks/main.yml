@@ -29,6 +29,7 @@
     - "{{ role_path }}/files/images/openebs/*"
     - "{{ role_path }}/files/images/dashboard/*"
     - "{{ role_path }}/files/images/kubesphere/*"
+    - "{{ role_path }}/files/images/promstack/*"
 
 - name: Register the file list
   command: "ls /tmp/images"
