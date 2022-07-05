@@ -38,6 +38,9 @@
 - name: perform a yum update
   yum:
     name: '*'
+    exclude:
+      - kernel*
+      - kmod*
     state: latest
     lock_timeout: 60
 
