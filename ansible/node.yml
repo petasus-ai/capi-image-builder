@@ -40,6 +40,8 @@
     - include_role:
         name: firewall
     - include_role:
+        name: security
+    - include_role:
         name: customize
     - include_role:
         name: sysprep

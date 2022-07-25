@@ -1,0 +1,57 @@
+---
+  - block:
+    - name: Add wheel group
+      group:
+        name: wheel
+        state: present
+
+    - name: Only allow sudo for the users included in wheel group
+      lineinfile:
+        dest: /etc/pam.d/su
+        insertafter: EOF
+        line: "auth       required   pam_wheel.so"
+
+    - name: Remove the existing maximum number of days a password may be used config
+      lineinfile:
+        dest: /etc/login.defs
+        regexp: '^PASS_MAX_DAYS'
+        state: absent
+
+    - name: Remove the existing minimum number of days allowed between password changes
+      lineinfile:
+        dest: /etc/login.defs
+        regexp: '^PASS_MIN_DAYS'
+        state: absent
+
+    - name: Configure maximum and minimum number of days a password may be used
+      lineinfile:
+        dest: /etc/login.defs
+        insertbefore: '^PASS_WARN_AGE'
+        line: "{{ item }}"
+      with_items:
+        - "PASS_MAX_DAYS   180"
+        - "PASS_MIN_DAYS   7"
+
+    - name: Configure the minium length of the password
+      replace:
+        path: /etc/pam.d/common-password
+        regexp: 'pam_unix.so obscure sha512'
+        replace: 'pam_unix.so obscure minlen=8 sha512'
+
+    - name: Configure account fail2lock settings
+      lineinfile:
+        dest: /etc/pam.d/common-auth
+        insertafter: EOF
+        line: "{{ item }}"
+      with_items:
+        - "auth       required   pam_tally2.so deny=10 unlock_time=3600"
+        - "account    required   pam_tally2.so"
+
+    - name: Log messages which contain notice and alert keywords
+      lineinfile:
+        dest: /etc/rsyslog.d/50-default.conf
+        insertafter: EOF
+        line: "{{ item }}"
+      with_items:
+        - "*.notice                         /var/log/messages"
+        - "*.alert                          /dev/console"

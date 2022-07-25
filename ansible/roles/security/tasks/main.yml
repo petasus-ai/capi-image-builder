@@ -1,0 +1,66 @@
+---
+  - block:
+  
+    - include_tasks: el_security.yml
+      when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
+
+    - include_tasks: deb_security.yml
+      when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
+
+    - name: Change the shadow file permission
+      file:
+        path: /etc/shadow
+        mode: '0400'
+
+    - name: Change SU file permission
+      file:
+        path: /bin/su
+        mode: '4750'
+
+    - name: Add umask in profile
+      lineinfile:
+        dest: /etc/profile
+        insertafter: EOF
+        line: "umask 022"
+
+    - name: Configure session timeout value to 3600
+      lineinfile:
+        dest: /etc/profile
+        insertafter: EOF
+        line: "{{ item }}"
+      with_items:
+        - TMOUT=3600
+        - export TMOUT
+
+    - name: Remove SUID, SGID of system binaries
+      file:
+        path: "{{ item }}"
+        mode: u-s,g-s
+      with_items:
+        - /usr/bin/at
+        - /usr/bin/newgrp
+        - /usr/bin/pkexec
+        
+    - name: Create hosts.equiv file
+      copy:
+        content: ""
+        dest: "{{ item }}"
+        group: root
+        owner: root
+        mode: 400
+      with_items:
+        - /etc/hosts.equiv
+        - /root/.rhosts
+
+    - name: Do not permit Root login with password
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '#PermitRootLogin prohibit-password'
+        line: 'PermitRootLogin no'
+
+    - name: Do not permit empty password authentication
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '#PermitEmptyPasswords no'
+        line: 'PermitEmptyPasswords no'
+
