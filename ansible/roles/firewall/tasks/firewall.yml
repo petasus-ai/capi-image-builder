@@ -1,13 +1,8 @@
 ---
-- name: install ufw package
-  apt:
+- name: start ufw daemon
+  systemd:
     name: ufw
-    state: present
-    update_cache: yes
-
-- name: start ufw
-  service:
-    name: ufw
+    enabled: yes
     state: started
 
 - name: allow outgoing traffic
@@ -164,6 +159,6 @@
     proto: tcp 
 
 - name: restart ufw
-  service:
+  systemd:
     name: ufw
     state: restarted

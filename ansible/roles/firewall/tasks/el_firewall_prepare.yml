@@ -1,0 +1,10 @@
+---
+- name: Uninstall firewalld package
+  yum:
+    name: firewalld
+    state: absent
+
+- name: Install ufw package
+  yum:
+    name: ufw
+    state: present

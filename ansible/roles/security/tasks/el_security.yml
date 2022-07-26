@@ -1,1 +1,9 @@
 ---
+  - block:
+    - name: Remove SUID, SGID of system binaries
+      file:
+        path: "{{ item }}"
+        mode: u-s,g-s
+      with_items:
+        - /usr/bin/newgrp
+        - /usr/bin/pkexec

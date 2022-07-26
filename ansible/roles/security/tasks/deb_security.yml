@@ -55,3 +55,12 @@
       with_items:
         - "*.notice                         /var/log/messages"
         - "*.alert                          /dev/console"
+
+    - name: Remove SUID, SGID of system binaries
+      file:
+        path: "{{ item }}"
+        mode: u-s,g-s
+      with_items:
+        - /usr/bin/at
+        - /usr/bin/newgrp
+        - /usr/bin/pkexec
