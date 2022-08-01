@@ -1,6 +1,0 @@
----
-- name: install ufw package
-  apt:
-    name: ufw
-    state: present
-    update_cache: yes

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ---
-- import_tasks: deb_firewall_prepare.yml
+- import_tasks: deb_firewall.yml
   when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
 
-- import_tasks: el_firewall_prepare.yml
+- import_tasks: el_firewall.yml
   when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"
-
-- import_tasks: firewall.yml
 
 - import_tasks: deb_fail2ban.yml
   when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
