@@ -7,6 +7,9 @@
     - include_tasks: deb_security.yml
       when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
 
+    - include_tasks: deb_ssl_upgrade.yml
+      when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "20.04"
+
     - name: Change the shadow file permission
       file:
         path: /etc/shadow
@@ -38,7 +41,7 @@
         dest: "{{ item }}"
         group: root
         owner: root
-        mode: 400
+        mode: 000
       with_items:
         - /etc/hosts.equiv
         - /root/.rhosts
@@ -55,3 +58,8 @@
         regexp: '#PermitEmptyPasswords no'
         line: 'PermitEmptyPasswords no'
 
+    - name: Enlarge the log rotate duration to 12 weeks
+      replace:
+        path: /etc/logrotate.conf
+        regexp: 'rotate 4'
+        replace: 'rotate 12'

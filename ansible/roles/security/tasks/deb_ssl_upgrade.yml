@@ -1,0 +1,56 @@
+---
+  - block:
+    - name: Install build-essential
+      apt:
+        name: build-essential
+        state: present
+        update_cache: yes
+
+    - name: Download the openssl latest package
+      get_url:
+        url: https://www.openssl.org/source/openssl-1.1.1q.tar.gz
+        dest: /tmp/openssl.tar.gz
+        mode: '0440'
+
+    - name: Uncompress the openssl package
+      unarchive:
+        src: /tmp/openssl.tar.gz
+        dest: /tmp
+        remote_src: yes
+    
+    - name: Rename openssl directory
+      command: mv /tmp/openssl-1.1.1q /tmp/openssl
+
+    - name: Configure the openssl
+      command: "./config"
+      args:
+        chdir: /tmp/openssl
+
+    - name: Build the openssl
+      make:
+        chdir: /tmp/openssl
+
+    - name: Install the openssl
+      make:
+        chdir: /tmp/openssl
+        target: install
+
+    - name: Backup the existing openssl binary
+      command: mv /usr/bin/openssl /usr/bin/openssl-old
+
+    - name: Add symbolic link to openssl binary
+      file:
+        src: "/usr/local/bin/openssl"
+        dest: "/usr/bin/openssl"
+        state: link
+
+    - name: Reload the config
+      command: ldconfig
+
+    - name: Remove openssl package
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /tmp/openssl
+        - /tmp/openssl.tar.gz
