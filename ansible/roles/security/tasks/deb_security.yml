@@ -47,6 +47,15 @@
         - "auth       required   pam_tally2.so deny=10 unlock_time=3600"
         - "account    required   pam_tally2.so"
 
+    - name: Remove SUID, SGID of system binaries
+      file:
+        path: "{{ item }}"
+        mode: u-s,g-s
+      with_items:
+        - /usr/bin/at
+        - /usr/bin/newgrp
+        - /usr/bin/pkexec
+
     - name: Log messages which contain notice and alert keywords
       lineinfile:
         dest: /etc/rsyslog.d/50-default.conf

@@ -34,15 +34,6 @@
       with_items:
         - TMOUT=3600
         - export TMOUT
-
-    - name: Remove SUID, SGID of system binaries
-      file:
-        path: "{{ item }}"
-        mode: u-s,g-s
-      with_items:
-        - /usr/bin/at
-        - /usr/bin/newgrp
-        - /usr/bin/pkexec
         
     - name: Create hosts.equiv file
       copy:
