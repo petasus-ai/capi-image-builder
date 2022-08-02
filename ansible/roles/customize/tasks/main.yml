@@ -9,3 +9,62 @@
     owner: root
     group: root
     mode: '0500'
+
+- name: download nerdctl binary
+  get_url:
+    url: https://github.com/containerd/nerdctl/releases/download/v0.22.2/nerdctl-0.22.2-linux-amd64.tar.gz
+    dest: /tmp/nerdctl.tar.gz
+    validate_certs: no
+    mode: '0500'
+
+- name: creates nerdctl tmp directory
+  file:
+    path: /tmp/nerdctl
+    state: directory
+
+- name: creates nerdctl configuration directory
+  file:
+    path: /etc/nerdctl
+    state: directory
+
+- name: uncompress nerdctl
+  unarchive:
+    src: /tmp/nerdctl.tar.gz
+    dest: /tmp/nerdctl
+    remote_src: yes
+
+- name: install nerdctl binary to /usr/local/bin
+  copy:
+    src: /tmp/nerdctl/nerdctl
+    dest: /usr/local/bin/nerdctl
+    owner: root
+    group: root
+    mode: '0500'
+    remote_src: yes
+
+- name: install nerdctl binary to /usr/bin
+  copy:
+    src: /tmp/nerdctl/nerdctl
+    dest: /usr/bin/nerdctl
+    owner: root
+    group: root
+    mode: '0500'
+    remote_src: yes
+
+- name: copy nerdctl configuration
+  copy:
+    src: nerdctl.toml
+    dest: /etc/nerdctl/nerdctl.toml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: remove nerdctl directory
+  file:
+    path: /tmp/nerdctl
+    state: absent
+
+- name: remove nerdctl binary
+  file:
+    path: /tmp/nerdctl.tar.gz
+    state: absent
