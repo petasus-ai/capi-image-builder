@@ -15,5 +15,3 @@
         deb: /tmp/openvswitch-datapath-dkms_2.15.3-1_all.deb
         state: present
         update_cache: yes
-
-    when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"

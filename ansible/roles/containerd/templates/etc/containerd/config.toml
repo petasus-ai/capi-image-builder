@@ -11,6 +11,14 @@ imports = ["/etc/containerd/conf.d/*.toml"]
 [plugins]
   [plugins."io.containerd.grpc.v1.cri"]
     sandbox_image = "{{ pause_image }}"
+  [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+          endpoint = ["https://registry-1.docker.io"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."edgestack.harbor.core:32443"]
+          endpoint = ["https://edgestack.harbor.core:32443"]
+        [plugins."io.containerd.grpc.v1.cri".registry.configs."edgestack.harbor.core:32443".tls]
+          insecure_skip_verify = true
 {% if kubernetes_semver is version('v1.21.0', '>=') %}
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
     runtime_type = "io.containerd.runc.v2"
