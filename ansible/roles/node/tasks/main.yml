@@ -18,6 +18,9 @@
 - import_tasks: amazonLinux2.yml
   when: ansible_distribution == "Amazon"
 
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
 - name: Ensure overlay module is present
   modprobe:
     name: overlay

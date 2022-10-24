@@ -8,3 +8,6 @@
 manifest.json
 /images/
 /ansible/roles/addons/files/
+*.hwm
+*.pwd
+*.pwi
