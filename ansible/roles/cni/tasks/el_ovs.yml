@@ -1,12 +1,41 @@
 ---
   - block:
-    - name: Copy OVS kmod rpm file to tmp folder
-      copy:
-        src: openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
-        dest: /tmp/openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
-
-    - name: Install OVS kmod rpm package
+    - name: Install OVS dependencies
       yum:
-        name: /tmp/openvswitch-kmod-2.15.3-1.el8.x86_64.rpm
-        disable_gpg_check: yes
+        name: ['git', 'net-tools', 'libibverbs']
         state: present
+
+    - name: Clone pre-built OVS repository
+      git:
+        repo: "{{ ovs_repo }}"
+        dest: "{{ tmp_path }}/prebuilt-ovs"
+        version: "{{ ovs_rk_version }}"
+
+    - name: ovs_install | Obtain kernel version
+      command: "uname -r"
+      register: kernel_version_result
+
+    - name: ovs_install | Configure kernel version
+      set_fact:
+        kernel_version: "{{ kernel_version_result.stdout }}"
+
+    - name: Find all kernel module rpm files in /tmp folder
+      find:
+        name: "{{ tmp_path }}/prebuilt-ovs/{{ ansible_distribution }}-{{ ansible_distribution_major_version }}/kmod/{{ kernel_version }}/"
+        patterns: "*.rpm"
+      register: kmod_rpm_files
+
+    - name: Setting rpm_kmod_list
+      set_fact:
+        kmod_rpm_list: "{{ kmod_rpm_files.files | map(attribute='path') | list}}"
+
+    - name: Install OVS kernel modules
+      yum:
+        name: "{{ kmod_rpm_list }}"
+        state: present
+        disable_gpg_check: yes
+
+    - name: Remove pre-built OVS directory
+      file:
+        path: "{{ tmp_path }}/prebuilt-ovs"
+        state: absent
