@@ -40,7 +40,11 @@
          [
            "-serial",
            "mon:stdio"
-         ]
+         ],
+	 [
+	  "-cpu",
+          "host"
+	]
        ],
       "vm_name": "{{user `build_name`}}-kube-{{user `kubernetes_semver`}}"
     },
