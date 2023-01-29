@@ -162,6 +162,7 @@ CENTOS_VERSIONS			:=	centos-7
 FLATCAR_VERSIONS		:=	flatcar
 PHOTON_VERSIONS			:=	photon-3
 ROCKYLINUX_VERSIONS     	:=  	rockylinux-8 rockylinux-8-uefi
+ALMALINUX_VERSIONS		:=	almalinux-8
 UBUNTU_VERSIONS			:=	ubuntu-1804 ubuntu-2004 ubuntu-2204
 WINDOWS_VERSIONS		:=	windows-2019 windows-2004 windows-2022
 
@@ -178,11 +179,12 @@ PLATFORMS_AND_VERSIONS	:=	$(CENTOS_VERSIONS) \
 							$(PHOTON_VERSIONS) \
 							$(RHEL_VERSIONS) \
 							$(ROCKYLINUX_VERSIONS) \
+							$(ALMALINUX_VERSIONS) \
 							$(UBUNTU_VERSIONS) \
 							$(WINDOWS_VERSIONS)
 
 QEMU_FLATCAR_BUILD_NAMES	?=	qemu-flatcar
-QEMU_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi
+QEMU_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
 
 RAW_BUILD_NAMES                        ?=      raw-ubuntu-1804 raw-ubuntu-2004
 
@@ -249,6 +251,7 @@ build-qemu-ubuntu-2204: ## Builds Ubuntu 22.04 QEMU image
 build-qemu-centos-7: ## Builds CentOS 7 QEMU image
 build-qemu-rockylinux-8: ## Builds Rocky 8 QEMU image
 build-qemu-rockylinux-8-uefi: ## Builds Rocky 8 UEFI QEMU image
+build-qemu-almalinux-8: ## Builds AlmaLinux 8 QEMU image
 build-qemu-all: $(QEMU_BUILD_TARGETS) ## Builds all Qemu images
 
 build-raw-ubuntu-1804: ## Builds Ubuntu 18.04 RAW image
@@ -266,6 +269,7 @@ validate-qemu-ubuntu-2204: ## Validates Ubuntu 22.04 QEMU image packer config
 validate-qemu-centos-7: ## Validates CentOS 7 QEMU image packer config
 validate-qemu-rockylinux-8: ## Validates Rocky Linux 8 QEMU image packer config
 validate-qemu-rockylinux-8-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
+validate-qemu-almalinux-8: ## Validates Alma Linux 8 QEMU image packer config
 validate-qemu-all: $(QEMU_VALIDATE_TARGETS) validate-qemu-flatcar ## Validates all Qemu Packer config
 
 validate-raw-ubuntu-1804: ## Validates Ubuntu 18.04 RAW image packer config

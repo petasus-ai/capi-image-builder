@@ -16,5 +16,3 @@
         name: ipvsadm
         state: started
         enabled: yes
-
-    when: ansible_os_family == "Rocky" or ansible_os_family == "RedHat"

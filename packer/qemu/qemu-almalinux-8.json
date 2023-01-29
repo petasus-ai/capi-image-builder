@@ -1,0 +1,19 @@
+{
+  "boot_command_prefix": "<up><tab> text inst.ks=",
+  "boot_command_suffix": "/8/ks.cfg<enter><wait><enter>",
+  "boot_media_path": "http://{{ .HTTPIP }}:{{ .HTTPPort }}",
+  "build_name": "almalinux-8",
+  "distro_arch": "amd64",
+  "distro_name": "almalinux",
+  "ssh_username": "almalinux",
+  "distro_version": "8",
+  "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8",
+  "guest_os_type": "centos8-64",
+  "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
+  "iso_checksum": "9505239cbaf56fae0abc93a2dba312606540014fcc01e74f196edac0b5fbe783",
+  "iso_checksum_type": "sha256",
+  "iso_url": "http://ftp.jaist.ac.jp/pub/Linux/almalinux/8.7/cloud/x86_64/images/AlmaLinux-8-GenericCloud-8.7-20221111.x86_64.qcow2",
+  "os_display_name": "AlmaLinux 8",
+  "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm",
+  "shutdown_command": "/sbin/halt -h -p"
+}
