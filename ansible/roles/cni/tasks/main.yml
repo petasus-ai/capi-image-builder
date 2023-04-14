@@ -20,6 +20,10 @@
       - { name: 'vxlan', kernel_module: 'vxlan' }
       - { name: 'geneve', kernel_module: 'geneve' }
       - { name: 'gre', kernel_module: 'gre' }
+      - { name: 'vport_vxlan', kernel_module: 'vport_vxlan' }
+      - { name: 'vport_geneve', kernel_module: 'vport_geneve' }
+      - { name: 'vport_gre', kernel_module: 'vport_gre' }
+      - { name: 'vport_stt', kernel_module: 'vport_stt' }
       - { name: 'openvswitch', kernel_module: 'openvswitch' }
 
     - name: Enable ipvs modules
