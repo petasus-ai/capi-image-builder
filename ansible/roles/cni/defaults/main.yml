@@ -1,4 +1,5 @@
 ---
 ovs_repo: "https://github.com/sonaproject/prebuilt-ovs.git"
-ovs_rk_version: "2.15.3"
+ovs_el_version: "2.17.7"
+ovs_deb_version: "2.17.7"
 tmp_path: "/tmp"

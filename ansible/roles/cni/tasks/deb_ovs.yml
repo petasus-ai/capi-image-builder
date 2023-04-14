@@ -1,9 +1,20 @@
 ---
   - block:
-    - name: Copy OVS dataplane dkms deb file to tmp folder
-      copy:
-        src: openvswitch-datapath-dkms_2.15.3-1_all.deb
-        dest: /tmp/openvswitch-datapath-dkms_2.15.3-1_all.deb
+    - name: Clone pre-built OVS repository
+      git:
+        repo: "{{ ovs_repo }}"
+        dest: "{{ tmp_path }}/prebuilt-ovs"
+        version: "{{ ovs_deb_version }}"
+
+    - name: Find all dkms module deb files in /tmp folder
+      find:
+        name: "{{ tmp_path }}/prebuilt-ovs/{{ ansible_distribution }}-{{ ansible_distribution_version }}/{{ ansible_architecture }}/"
+        patterns: "openvswitch-datapath-dkms_*.deb"
+      register: dkms_deb_files
+
+    - name: Setting dkms_deb_list
+      set_fact:
+        dkms_deb_list: "{{ dkms_deb_files.files | map(attribute='path') | list}}"
 
     - name: Remove default openvswitch module
       file:
@@ -12,6 +23,12 @@
 
     - name: Install OVS dataplane dkms deb package
       apt:
-        deb: /tmp/openvswitch-datapath-dkms_2.15.3-1_all.deb
+        deb: "{{ item }}"
         state: present
         update_cache: yes
+      with_items: "{{ dkms_deb_list }}"
+
+    - name: Remove pre-built OVS directory
+      file:
+        path: "{{ tmp_path }}/prebuilt-ovs"
+        state: absent
