@@ -33,4 +33,9 @@
       - "kubelet={{ kubernetes_deb_version }}"
       - "kubeadm={{ kubernetes_deb_version }}"
       - "kubectl={{ kubernetes_deb_version }}"
-      - "kubernetes-cni={{kubernetes_cni_deb_version }}"
+      - "kubernetes-cni={{ kubernetes_cni_deb_version }}"
+
+- name: Install bash-completion
+  apt:
+    name: "bash-completion"
+    state: present

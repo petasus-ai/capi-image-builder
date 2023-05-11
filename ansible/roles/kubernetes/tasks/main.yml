@@ -45,6 +45,11 @@
 - import_tasks: crictl-url.yml
   when: crictl_source_type == "http"
 
+- name: Enable kubectl auto-completion
+  shell:
+    cmd: |
+      kubectl completion bash | sudo tee /etc/bash_completion.d/kubectl > /dev/null
+
 - name: Create kubelet default config file
   template:
     src: etc/sysconfig/kubelet

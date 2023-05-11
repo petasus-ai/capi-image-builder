@@ -32,3 +32,8 @@
       - "kubeadm-{{ kubernetes_rpm_version }}"
       - "kubectl-{{ kubernetes_rpm_version }}"
       - "kubernetes-cni-{{kubernetes_cni_rpm_version }}"
+
+- name: Install bash-completion
+  yum:
+    name: "bash-completion"
+    state: present
