@@ -11,9 +11,9 @@
   "guest_os_type": "centos8-64",
   "firmware": "/usr/share/edk2.git/ovmf-x64/OVMF_CODE-pure-efi.fd",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-  "iso_checksum": "f242e06b76124b8ea3495fc6d69eb6e89e0a1826e3d9bdabed0ef4e68880eb5a",
+  "iso_checksum": "d17f15a7649dd064795306c114b90fc5062e7d5fefa9e9f0bd6b7ce1aeac3ae5",
   "iso_checksum_type": "sha256",
-  "iso_url": "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base-8.7-20230215.0.x86_64.qcow2",
+  "iso_url": "https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2",
   "os_display_name": "RockyLinux 8",
   "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm",
   "shutdown_command": "/sbin/halt -h -p"
