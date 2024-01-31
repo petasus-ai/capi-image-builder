@@ -10,14 +10,19 @@
   tags:
     - facts
 
-- name: Force binaries directory for Flatcar Container Linux
+- name: Set the ansible_python_interpreter fact
   set_fact:
-    bin_dir: "/opt/bin"
+    ansible_python_interpreter: "{{ external_binary_path }}/python"
   tags:
     - facts
 
-- name: Set the ansible_python_interpreter fact
+# Some tasks are not compatible with Flatcar, so to centralize and deduplicate the logic of checking
+# if we run on Flatcar, we define it here.
+#
+# This is required until https://github.com/ansible/ansible/issues/77537 is fixed and used.
+- name: Override Flatcar's OS family
   set_fact:
-    ansible_python_interpreter: "{{ bin_dir }}/python"
+    ansible_os_family: Flatcar
+  when: ansible_os_family == "Flatcar Container Linux by Kinvolk"
   tags:
     - facts

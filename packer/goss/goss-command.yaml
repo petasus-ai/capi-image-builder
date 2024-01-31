@@ -36,7 +36,7 @@ command:
     stdout: ["coredns", "etcd", "kube-apiserver", "kube-controller-manager", "kube-proxy", "kube-scheduler", "pause"]
 {{end}}
 {{if eq .Vars.kubernetes_source_type "http"}}
-  kubectl version --short --client=true -o json | jq .clientVersion.gitVersion | tr -d '"' | awk '{print substr($1,2); }':
+  kubectl version --client -o json | jq .clientVersion.gitVersion | tr -d '"' | awk '{print substr($1,2); }':
     exit-status: 0
     stdout: [{{ .Vars.kubernetes_version }}]
     stderr: []
@@ -59,13 +59,20 @@ command:
     stderr: []
     timeout: 0
 {{end}}
+{{if eq .Vars.OS "photon"}}
+  cat /sys/kernel/mm/transparent_hugepage/enabled:
+    exit-status: 0
+    stdout: ["always [madvise] never"]
+    stderr: []
+    timeout: 0
+{{end}}
 {{range $name, $vers := index .Vars .Vars.OS .Vars.PROVIDER "command"}}
   {{ $name }}:
   {{range $key, $val := $vers}}
     {{$key}}: {{$val}}
   {{end}}
 {{end}}
-{{end}} #End linux only 
+{{end}} #End linux only
 
 {{ if eq .Vars.OS "windows" }} # Windows
   automatic updates set to notify:
@@ -92,7 +99,7 @@ command:
     stdout:
     - "True"
     timeout: 30000
-  kubectl version --client:
+  kubectl version --client -o json:
     exit-status: 0
     stdout:
     - {{.Vars.kubernetes_version}}
@@ -111,18 +118,24 @@ command:
     stdout:
     - {{.Vars.kubernetes_version}}
     timeout: 10000
-  Check Symbolic link to /etc/kubernetes/pki:
-    exit-status: 0
-    exec: powershell -command "(Get-item -path $env:SystemDrive\var\lib\kubelet\etc\kubernetes\pki| select LinkType,Target)"
-    stdout:
-    - SymbolicLink 
-    - C:\etc\kubernetes\pki\
 {{ if eq .Vars.distribution_version "2019" }}
   Windows build version is high enough:
     exit-status: 0
     exec: powershell -command "(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name UBR).UBR -ge 1817"
     stdout:
     - "True"
+    timeout: 30000
+  Check HNS Control Flag:
+    exit-status: 0
+    exec: powershell -command "(Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\hns\State" -Name HNSControlFlag).HNSControlFlag -eq 80"
+    stdout:
+    - True
+    timeout: 30000
+  Check WCIFS Flag:
+    exit-status: 0
+    exec: powershell -command "(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\wcifs' -Name WcifsSOPCountDisabled).WcifsSOPCountDisabled -eq 0"
+    stdout:
+    - True
     timeout: 30000
 {{end}}
 {{ if eq .Vars.runtime "containerd" }}
@@ -132,19 +145,21 @@ command:
     stdout:
     - "{{.Vars.containerd_version}}"
     timeout: 30000
-  Correct Containerd cni config:
+  Correct Containerd config:
     exec: "\"/Program Files/containerd/containerd.exe\" config dump"
     exit-status: 0
     stdout:
     - "sandbox_image = \"{{.Vars.pause_image}}\""
     - "conf_dir = \"C:/etc/cni/net.d\""
     - "bin_dir = \"C:/opt/cni/bin\""
+    - "root = \"C:\\\\ProgramData\\\\containerd\\\\root\""
+    - "state = \"C:\\\\ProgramData\\\\containerd\\\\state\""
     timeout: 30000
   Check Windows Defender Exclusions are in place:
     exit-status: 0
     exec: powershell -command "(Get-MpPreference | select ExclusionProcess)"
     stdout:
-    - \Program Files\containerd\containerd.exe, 
+    - \Program Files\containerd\containerd.exe,
     - \Program Files\containerd\ctr.exe
   Check SMB CompartmentNamespace Flag:
     exit-status: 0
@@ -156,17 +171,8 @@ command:
     exit-status: 0
     exec: netsh int ipv4 show dynamicportrange tcp
     stdout:
-    - "Start Port      : 33000"
-    - "Number of Ports : 32536"
-    timeout: 30000
-{{end}}
-
-{{ if eq .Vars.runtime "docker-ee" }}
-  Correct Docker Version:
-    exec: "docker.exe version"
-    exit-status: 0
-    stdout:
-    - "{{.Vars.docker_ee_version}}"
+    - "Start Port      : 34000"
+    - "Number of Ports : 31536"
     timeout: 30000
 {{end}}
 
@@ -177,6 +183,62 @@ command:
     stdout:
     - True
     stderr: []
+    timeout: 30000
+
+  # this could be moved to place for other providers if they want to install it
+  Key Vault gMSA binary is installed:
+    exec: powershell -command "Test-Path -Path  C:\Windows\System32\CCGAKVPlugin.dll"
+    exit-status: 0
+    stdout:
+    - "True"
+    timeout: 30000
+  Key Vault gMSA binary COM is registered:
+    exec: powershell -command "(Get-Item 'HKLM:SYSTEM\CurrentControlSet\Control\CCG\COMClasses\{CCC2A336-D7F3-4818-A213-272B7924213E}')  | Ft -autosize -wrap"
+    exit-status: 0
+    stdout:
+    - "CCC2A336-D7F3-4818-A213-272B7924213E"
+    timeout: 30000
+  Key Vault gMSA binary is registered:
+    exec: powershell -command "Get-ItemProperty -Path 'HKLM:SOFTWARE\CLASSES\CLSID\{CCC2A336-D7F3-4818-A213-272B7924213E}\InprocServer32\'"
+    exit-status: 0
+    stdout:
+    - "C:\\Windows\\System32\\CCGAKVPlugin.dll"
+    timeout: 30000
+  Key Vault gMSA CCG interface is registered:
+    exec: powershell -command "(Get-Item 'HKLM:SOFTWARE\Classes\Interface\{6ECDA518-2010-4437-8BC3-46E752B7B172}') | Ft -autosize -wrap"
+    exit-status: 0
+    stdout:
+    - "ICcgDomainAuthCredentials"
+    timeout: 30000
+  Check Azure CLI is installed via alias:
+    exec: powershell -command "az"
+    exit-status: 0
+{{end}}
+
+{{ if ne .Vars.ssh_source_url "" }}
+  Check permission of OpenSSH directory for SYSTEM:
+    exec: powershell -command "((Get-Acl 'C:\Program Files\OpenSSH').Access | Where-Object{$_.IdentityReference -eq 'NT AUTHORITY\SYSTEM' -and $_.FileSystemRights -eq 'FullControl'}) -ne $null"
+    exit-status: 0
+    stdout:
+    - True
+    timeout: 30000
+  Check permission of OpenSSH directory for Administrators:
+    exec: powershell -command "((Get-Acl 'C:\Program Files\OpenSSH').Access | Where-Object{$_.IdentityReference -eq 'BUILTIN\Administrators' -and $_.FileSystemRights -eq 'FullControl'}) -ne $null"
+    exit-status: 0
+    stdout:
+    - True
+    timeout: 30000
+  Check permission of OpenSSH directory for Users:
+    exec: powershell -command "((Get-Acl 'C:\Program Files\OpenSSH').Access | Where-Object{$_.IdentityReference -eq 'BUILTIN\Users' -and $_.FileSystemRights -eq 'ReadAndExecute, Synchronize'}) -eq $null"
+    exit-status: 0
+    stdout:
+    - True
+    timeout: 30000
+  Check if SSH server port is open:
+    exec: powershell -command "(Get-NetFirewallRule -ErrorAction Stop -DisplayName 'sshd').Enabled"
+    exit-status: 0
+    stdout:
+        - True
     timeout: 30000
 {{end}}
 {{end}} #end windows

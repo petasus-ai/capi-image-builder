@@ -22,20 +22,37 @@ set -o pipefail
 
 source hack/utils.sh
 
-_version="2.11.5"
+# Note: ansible-core v2.16.x requires Python >= 3.10.
+_version="2.15.9"
 
 # Change directories to the parent directory of the one in which this
 # script is located.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# Disable pip's version check and root user warning
+export PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_ROOT_USER_ACTION=ignore
+
 if ! command -v ansible >/dev/null 2>&1; then
-    ensure_py3
-    pip3 install --user "ansible-core==${_version}"
+    pip3_install "ansible-core==${_version}"
     ensure_py3_bin ansible
     ensure_py3_bin ansible-playbook
 fi
 
-ansible-galaxy collection install community.general
-ansible-galaxy collection install ansible.posix
-ansible-galaxy collection install 'ansible.windows:>=1.7.0'
-ansible-galaxy collection install community.windows
+ansible_version=""
+IFS=" " read -ra ansible_version <<< "$(ansible --version)"
+if [[ "${_version}" != $(echo -e "${_version}\n${ansible_version[2]}" | sort -s -t. -k 1,1 -k 2,2n -k 3,3n | head -n1) && "${ansible_version[2]}" != "devel" ]]; then
+  cat <<EOF
+Detected ansible version: ${ansible_version[*]}.
+Image builder requires ${_version} or greater.
+Please install ${_version} or later.
+EOF
+  exit 2
+fi
+
+echo ${ansible_version[*]}
+
+ansible-galaxy collection install \
+  community.general \
+  ansible.posix \
+  'ansible.windows:>=1.7.0' \
+  community.windows

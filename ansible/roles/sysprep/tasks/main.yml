@@ -21,8 +21,8 @@
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
-- import_tasks: redhat.yml
-  when: ansible_os_family == "Rocky"
+- import_tasks: mariner.yml
+  when: ansible_os_family == "Common Base Linux Mariner"
 
 - import_tasks: photon.yml
   when: ansible_os_family == "VMware Photon OS"
@@ -33,6 +33,12 @@
     state: absent
   when: http_proxy is defined or https_proxy is defined
 
+- name: Remove pip conf file if needed
+  file:
+    path: /etc/pip.conf
+    state: absent
+  when: remove_extra_repos and pip_conf_file != ""
+
 - name: Truncate machine id
   file:
     state: "{{ item.state }}"
@@ -41,9 +47,9 @@
     group: root
     mode: "{{ item.mode }}"
   loop:
-  - { path: /etc/machine-id, state: absent, mode: "{{ machine_id_mode }}" }
-  - { path: /etc/machine-id, state: touch,  mode: "{{ machine_id_mode }}" }
-  when: ansible_os_family != "Flatcar"
+    - { path: /etc/machine-id, state: absent, mode: "{{ machine_id_mode }}" }
+    - { path: /etc/machine-id, state: touch, mode: "{{ machine_id_mode }}" }
+  when: ansible_os_family not in ["Common Base Linux Mariner", "Flatcar"]
 
 - name: Truncate hostname file
   file:
@@ -53,14 +59,13 @@
     group: root
     mode: "{{ item.mode }}"
   loop:
-  - { path: /etc/hostname, state: absent, mode: "0644" }
-  - { path: /etc/hostname, state: touch,  mode: "0644" }
+    - { path: /etc/hostname, state: absent, mode: "0644" }
+    - { path: /etc/hostname, state: touch, mode: "0644" }
 
 - name: Set hostname
   hostname:
     name: localhost.local
-  ignore_errors: true
-  when: ansible_os_family != "VMware Photon OS" and ansible_os_family != "Flatcar"
+  when: ansible_os_family not in ["Common Base Linux Mariner", "Flatcar", "VMware Photon OS"] and packer_build_name != "nutanix"
 
 - name: Reset hosts file
   copy:
@@ -78,20 +83,37 @@
     group: utmp
     mode: "{{ item.mode }}"
   loop:
-  - { path: /var/log/wtmp,    state: absent, mode: "0664" }
-  - { path: /var/log/lastlog, state: absent, mode: "{{ last_log_mode }}" }
-  - { path: /var/log/wtmp,    state: touch,  mode: "0664" }
-  - { path: /var/log/lastlog, state: touch,  mode: "{{ last_log_mode }}" }
+    - { path: /var/log/wtmp, state: absent, mode: "0664" }
+    - { path: /var/log/lastlog, state: absent, mode: "{{ last_log_mode }}" }
+    - { path: /var/log/wtmp, state: touch, mode: "0664" }
+    - { path: /var/log/lastlog, state: touch, mode: "{{ last_log_mode }}" }
 
 - name: Remove cloud-init lib dir and logs
   file:
     state: absent
     path: "{{ item }}"
   loop:
-  - /var/lib/cloud
-  - /var/log/cloud-init.log
-  - /var/log/cloud-init-output.log
-  - /var/run/cloud-init
+    - /var/lib/cloud
+    - /var/log/cloud-init.log
+    - /var/log/cloud-init-output.log
+    - /var/run/cloud-init
+
+- name: Reset cloud-init
+  shell:
+    cmd: |
+      cloud-init clean --machine-id
+  when: ansible_os_family == "Debian"
+
+- name: Reset cloud-init
+  shell:
+    cmd: |
+      cloud-init clean
+  when: ansible_os_family == "RedHat"
+
+- name: Remove cloud-init.disabled
+  file:
+    state: absent
+    path: /etc/cloud/cloud-init.disabled
 
 # A shallow search in /tmp and /var/tmp is used to declare which files or
 # directories will be removed as part of resetting temp space. The reason
@@ -103,9 +125,9 @@
     depth: 1
     file_type: any
     paths:
-    - /tmp
-    - /var/tmp
-    pattern: '*'
+      - /tmp
+      - /var/tmp
+    pattern: "*"
   register: temp_files
 
 - name: Reset temp space
@@ -119,10 +141,10 @@
     depth: 1
     file_type: any
     paths:
-    - /lib/netplan
-    - /etc/netplan
-    - /run/netplan
-    pattern: '*.yaml'
+      - /lib/netplan
+      - /etc/netplan
+      - /run/netplan
+    pattern: "*.yaml"
   register: netplan_files
 
 - name: Delete netplan files
@@ -132,10 +154,19 @@
   loop: "{{ netplan_files.files }}"
   when: netplan_files.files is defined and (netplan_files.files|length>0)
 
+- name: Create netplan for KubeVirt
+  vars:
+    kubevirt: "{{ lookup('env', 'KUBEVIRT') }}"
+  copy:
+    src: files/etc/netplan/51-kubevirt-netplan.yaml
+    dest: /etc/netplan/51-kubevirt-netplan.yaml
+    mode: "0644"
+  when: ansible_os_family == "Debian" and kubevirt == "true"
+
 - name: Find SSH host keys
   find:
     path: /etc/ssh
-    pattern: 'ssh_host_*'
+    pattern: ssh_host_*
   register: ssh_host_keys
 
 - name: Remove SSH host keys
@@ -149,8 +180,8 @@
     state: absent
     path: "{{ item.path }}"
   loop:
-  - { path: /root/.ssh/authorized_keys }
-  - { path: "/home/{{ ansible_env.SUDO_USER | default(ansible_user_id) }}/.ssh/authorized_keys" }
+    - { path: /root/.ssh/authorized_keys }
+    - { path: "/home/{{ ansible_env.SUDO_USER | default(ansible_user_id) }}/.ssh/authorized_keys" }
   when: ansible_os_family != "Flatcar"
 
 - name: Remove SSH authorized users for Flatcar
@@ -158,9 +189,8 @@
     state: absent
     path: "{{ item.path }}"
   loop:
-  - { path: /root/.ssh/authorized_keys }
+    - { path: /root/.ssh/authorized_keys }
   when: ansible_os_family == "Flatcar"
-
 
 - name: Truncate all remaining log files in /var/log
   shell:
@@ -168,10 +198,10 @@
       find /var/log -type f -iname '*.log' | xargs truncate -s 0
   when: ansible_os_family != "Flatcar"
 
-- name: Delete all logrotated log zips
+- name: Delete all logrotated logs
   shell:
     cmd: |
-      find /var/log -type f -name '*.gz' -exec rm {} +
+      find /var/log -type f -regex '.*[0-9z]$' -exec rm {} +
   when: ansible_os_family != "Flatcar"
 
 - name: Remove swapfile
@@ -179,8 +209,9 @@
     state: "{{ item.state }}"
     path: "{{ item.path }}"
   loop:
-  - { path: /swapfile, state: absent }
-  - { path: /mnt/resource/swapfile, state: absent }
+    - { path: /swap.img, state: absent }
+    - { path: /swapfile, state: absent }
+    - { path: /mnt/resource/swapfile, state: absent }
   when: ansible_memory_mb.swap.total != 0
 
 - name: Truncate shell history
@@ -188,8 +219,8 @@
     state: absent
     path: "{{ item.path }}"
   loop:
-  - { path: /root/.bash_history }
-  - { path: "/home/{{ ansible_env.SUDO_USER | default(ansible_user_id) }}/.bash_history" }
+    - { path: /root/.bash_history }
+    - { path: "/home/{{ ansible_env.SUDO_USER | default(ansible_user_id) }}/.bash_history" }
 
 - name: Rotate journalctl to archive logs
   shell:
@@ -215,3 +246,15 @@
     state: absent
     path: /usr/share/oem/config.ign
   when: ansible_os_family == "Flatcar"
+
+- name: Start fstrim
+  systemd:
+    name: fstrim.service
+    state: started
+  when: ansible_os_family == "Debian"
+
+- name: Start ssh
+  systemd:
+    name: ssh
+    enabled: true
+  when: ansible_os_family == "Debian"

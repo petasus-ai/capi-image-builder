@@ -15,9 +15,12 @@ service:
   auditd:
     enabled: true
     running: true
+  {{if ne .Vars.OS "flatcar"}}
+  # Flatcar uses systemd-timesyncd instead of chronyd.
   chronyd:
     enabled: true
     running: true
+  {{end}}
 {{range $name, $vers := index .Vars .Vars.OS "common-service"}}
   {{ $name }}:
   {{range $key, $val := $vers}}
@@ -50,16 +53,6 @@ command:
     stdout: {{range $vers.expected}}
     - {{.}}
     {{end}}
-{{end}}
-
-{{ if eq .Vars.runtime "docker-ee" }}
-
-  "Windows Service - docker":
-    exec: powershell -command "(Get-Service docker | select *)"
-    exit-status: 0
-    stdout: 
-    - Automatic
-    - Running
 {{end}}
 
 {{ if eq .Vars.runtime "containerd"}}

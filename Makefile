@@ -161,7 +161,7 @@ PACKER_WINDOWS_NODE_FLAGS := $(foreach f,$(abspath $(COMMON_WINDOWS_VAR_FILES)),
 CENTOS_VERSIONS			:=	centos-7
 FLATCAR_VERSIONS		:=	flatcar
 PHOTON_VERSIONS			:=	photon-3
-ROCKYLINUX_VERSIONS     	:=  	rockylinux-8 rockylinux-8-uefi
+ROCKYLINUX_VERSIONS     :=  rockylinux-8 rockylinux-8-uefi
 ALMALINUX_VERSIONS		:=	almalinux-8
 UBUNTU_VERSIONS			:=	ubuntu-1804 ubuntu-2004 ubuntu-2204
 WINDOWS_VERSIONS		:=	windows-2019 windows-2004 windows-2022
@@ -212,11 +212,11 @@ $(QEMU_FLATCAR_VALIDATE_TARGETS): deps-qemu
 
 .PHONY: $(QEMU_BUILD_TARGETS)
 $(QEMU_BUILD_TARGETS): deps-qemu
-	packer build $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer build $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" --var 'kubevirt=true' $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
 .PHONY: $(QEMU_VALIDATE_TARGETS)
 $(QEMU_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" --var 'kubevirt=true' $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
 .PHONY: $(RAW_BUILD_TARGETS)
 $(RAW_BUILD_TARGETS): deps-raw

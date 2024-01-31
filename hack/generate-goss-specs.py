@@ -26,13 +26,14 @@ root_path = os.path.abspath(os.path.join(sys.argv[0], '..', '..'))
 # Define what OS's are supported on which providers
 builds = {'amazon': ['amazon linux', 'centos', 'flatcar', 'ubuntu', 'windows'],
           'azure':  ['centos', 'ubuntu', 'windows'],
-          'ova': ['centos', 'photon', 'rhel', 'ubuntu', 'windows']}
+          'ova': ['centos', 'photon', 'rhel', 'ubuntu', 'windows'],
+          'oci':['ubuntu', 'oracle linux']}
 
 def generate_goss(provider, system, versions, runtime, dryrun=False, save=False):
     cmd = ['goss', '-g', 'packer/goss/goss.yaml', '--vars', 'packer/goss/goss-vars.yaml']
     vars = {'OS': system, 'PROVIDER': provider,
+            'OS_VERSION': versions['os'],
             'containerd_version': versions['containerd'],
-            'docker_ee_version': versions['docker'],
             'distribution_version': versions['os'],
             'kubernetes_version': versions['k8s'],
             'kubernetes_deb_version': versions['k8s_deb'],
@@ -45,6 +46,8 @@ def generate_goss(provider, system, versions, runtime, dryrun=False, save=False)
             'runtime': runtime,
             'pause_image': versions['pause']}
 
+    if system == "windows" and versions.get('ssh_url') is not None:
+        vars['ssh_source_url'] = versions['ssh_url']
 
     # Build command
     cmd.extend(['--vars-inline', json.dumps(vars), 'render'])
@@ -78,7 +81,7 @@ def main():
         usage='%(prog)s [-h] [--provider {amazon,azure,ova}] '
               '[--os {al2,centos,flatcar,photon,rhel,ubuntu,windows}]')
     parser.add_argument('--provider',
-                        choices=['amazon', 'azure', 'ova'],
+                        choices=['amazon', 'azure', 'ova','oci'],
                         action='append',
                         default=None,
                         help='One provider. Can be used multiple times')
@@ -110,8 +113,8 @@ def main():
     containerd = read_json_file(os.path.join(root_path, 'packer', 'config', 'containerd.json'))
     versions['containerd'] = containerd['containerd_version']
 
-    docker = read_json_file(os.path.join(root_path, 'packer', 'config', 'windows', 'docker.json'))
-    versions['docker'] = docker['docker_ee_version']
+    wincommon = read_json_file(os.path.join(root_path, 'packer', 'config', 'windows', 'common.json'))
+    versions['ssh_url'] = wincommon['ssh_source_url']
 
     common = read_json_file(os.path.join(root_path, 'packer', 'config', 'common.json'))
     versions['pause'] = common['pause_image']
@@ -133,8 +136,14 @@ def main():
     for provider, system in itertools.product(providers, oss):
         if system in builds[provider]:
             if system == 'windows':
-                runtimes = ["docker-ee","containerd"]
-                os_versions = ["2019", "2004"]
+                runtimes = ["containerd"]
+                os_versions = ["2019", "2022"]
+            elif system == 'rhel':
+                runtimes = ["containerd"]
+                os_versions = ["7", "8"]
+            elif system == 'photon':
+                runtimes = ["containerd"]
+                os_versions = ["3", "4", "5"]
             else: 
                 runtimes = ["containerd"]
                 os_versions = [""]

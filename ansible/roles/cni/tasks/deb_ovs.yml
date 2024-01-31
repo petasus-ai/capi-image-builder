@@ -1,5 +1,10 @@
 ---
   - block:
+    - name: Install OVS dependencies
+      apt:
+        name: [ 'git' ]
+        state: present
+
     - name: Clone pre-built OVS repository
       git:
         repo: "{{ ovs_repo }}"

@@ -23,6 +23,8 @@
         "./packer/ova/windows/sysprep.ps1"
       ],
       "guest_os_type": "{{user `local_guest_os_type`}}",
+      "http_port_max": "{{user `http_port_max`}}",
+      "http_port_min": "{{user `http_port_min`}}",
       "iso_checksum": "{{user `iso_checksum` }}",
       "iso_urls": [
         "{{user `os_iso_url`}}"
@@ -67,12 +69,13 @@
         "./packer/ova/windows/disable-network-discovery.cmd",
         "./packer/ova/windows/disable-winrm.ps1",
         "./packer/ova/windows/enable-winrm.ps1",
-        "./packer/ova/windows/install-vm-tools.cmd",
         "./packer/ova/windows/sysprep.ps1"
       ],
       "folder": "{{user `folder`}}",
       "guest_os_type": "{{user `vsphere_guest_os_type`}}",
       "host": "{{user `host`}}",
+      "http_port_max": "{{user `http_port_max`}}",
+      "http_port_min": "{{user `http_port_min`}}",
       "insecure_connection": "{{user `insecure_connection`}}",
       "iso_paths": [
         "{{user `os_iso_path`}}",
@@ -112,9 +115,8 @@
         "build_date": "{{isotime}}",
         "build_name": "{{user `build_name`}}",
         "build_timestamp": "{{user `build_timestamp`}}",
-        "build_type": "node",
         "containerd_version": "{{user `containerd_version`}}",
-        "custom_role": "{{user `custom_role`}}",
+        "debug_tools": "{{user `debug_tools`}}",
         "disable_hypervisor": "{{user `disable_hypervisor`}}",
         "disk_size": "{{user `disk_size`}}",
         "distro_arch": "{{user `distro_arch` }}",
@@ -143,20 +145,7 @@
       ],
       "inline": [
         "cd {{user `output_dir`}}",
-        "tar xf {{user `build_version`}}.ova",
-        "rm {{user `build_version`}}.ova",
-        "../../hack/image-build-ova.py --stream_vmdk --node --vmx {{user `vmx_version`}} --eula ../../hack/ovf_eula.txt --ovf_template ../../hack/ovf_template.xml  --vmdk_file {{user `build_version`}}-disk1.vmdk"
-      ],
-      "name": "esx",
-      "type": "shell-local"
-    },
-    {
-      "except": [
-        "file"
-      ],
-      "inline": [
-        "cd {{user `output_dir`}}",
-        "../../hack/image-build-ova.py --node --vmx {{user `vmx_version`}} --eula ../../hack/ovf_eula.txt --ovf_template ../../hack/ovf_template.xml --vmdk_file {{user `build_version`}}-disk-0.vmdk"
+        "../../hack/image-build-ova.py --vmx {{user `vmx_version`}} --eula ../../hack/ovf_eula.txt --ovf_template ../../hack/ovf_template.xml --vmdk_file {{user `build_version`}}-disk-0.vmdk"
       ],
       "name": "vsphere",
       "type": "shell-local"
@@ -166,7 +155,7 @@
         "file"
       ],
       "inline": [
-        "./hack/image-build-ova.py --stream_vmdk --node --vmx {{user `vmx_version`}} --eula ./hack/ovf_eula.txt --ovf_template ./hack/ovf_template.xml {{user `output_dir`}}",
+        "./hack/image-build-ova.py --stream_vmdk --vmx {{user `vmx_version`}} --eula ./hack/ovf_eula.txt --ovf_template ./hack/ovf_template.xml {{user `output_dir`}}",
         "./hack/image-post-create-config.sh {{user `output_dir`}}"
       ],
       "name": "local",
@@ -225,12 +214,18 @@
         "PROVIDER": "ova",
         "containerd_version": "{{user `containerd_version`}}",
         "distribution_version": "{{user `distro_version`}}",
-        "docker_ee_version": "{{user `docker_ee_version`}}",
         "kubernetes_version": "{{user `kubernetes_semver`}}",
         "pause_image": "{{user `pause_image`}}",
-        "runtime": "{{user `runtime`}}"
+        "runtime": "{{user `runtime`}}",
+        "ssh_source_url": "{{user `ssh_source_url`}}"
       },
       "version": "{{user `goss_version`}}"
+    },
+    {
+      "inline": [
+        "rm -Force -Recurse C:\\var\\log\\kubelet\\*"
+      ],
+      "type": "powershell"
     }
   ],
   "variables": {
@@ -244,13 +239,15 @@
     "cloudbase_init_url": "https://github.com/cloudbase/cloudbase-init/releases/download/{{user `cloudbase_init_version`}}/CloudbaseInitSetup_{{user `cloudbase_init_version` | replace_all `.` `_` }}_x64.msi",
     "cloudbase_metadata_services": "cloudbaseinit.metadata.services.vmwareguestinfoservice.VMwareGuestInfoService",
     "cloudbase_metadata_services_unattend": "cloudbaseinit.metadata.services.vmwareguestinfoservice.VMwareGuestInfoService",
-    "cloudbase_plugins": "cloudbaseinit.plugins.common.ephemeraldisk.EphemeralDiskPlugin, cloudbaseinit.plugins.common.mtu.MTUPlugin, cloudbaseinit.plugins.common.sethostname.SetHostNamePlugin,  cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin, cloudbaseinit.plugins.common.userdata.UserDataPlugin, cloudbaseinit.plugins.common.localscripts.LocalScriptsPlugin, cloudbaseinit.plugins.windows.createuser.CreateUserPlugin, cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin",
+    "cloudbase_plugins": "cloudbaseinit.plugins.windows.createuser.CreateUserPlugin, cloudbaseinit.plugins.common.setuserpassword.SetUserPasswordPlugin, cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin, cloudbaseinit.plugins.common.userdata.UserDataPlugin, cloudbaseinit.plugins.common.ephemeraldisk.EphemeralDiskPlugin, cloudbaseinit.plugins.common.mtu.MTUPlugin, cloudbaseinit.plugins.common.sethostname.SetHostNamePlugin,  cloudbaseinit.plugins.common.sshpublickeys.SetUserSSHPublicKeysPlugin, cloudbaseinit.plugins.common.localscripts.LocalScriptsPlugin, cloudbaseinit.plugins.windows.createuser.CreateUserPlugin, cloudbaseinit.plugins.windows.extendvolumes.ExtendVolumesPlugin",
     "cloudbase_plugins_unattend": "cloudbaseinit.plugins.common.mtu.MTUPlugin",
     "containerd_sha256": null,
     "containerd_url": "",
     "containerd_version": null,
     "disable_hypervisor": null,
     "disk_size": "81920",
+    "http_port_max": "",
+    "http_port_min": "",
     "ib_version": "{{env `IB_VERSION`}}",
     "kubernetes_base_url": "https://kubernetesreleases.blob.core.windows.net/kubernetes/{{user `kubernetes_semver`}}/binaries/node/windows/{{user `kubernetes_goarch`}}",
     "kubernetes_http_package_url": "",
@@ -263,7 +260,6 @@
     "unattend_timezone": "Pacific Standard Time",
     "windows_service_manager": null,
     "windows_updates_categories": null,
-    "windows_updates_kbs": null,
-    "wins_url": "https://github.com/rancher/wins/releases/download/v{{user `wins_version`}}/wins.exe"
+    "windows_updates_kbs": null
   }
 }

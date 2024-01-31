@@ -29,7 +29,13 @@ esac
 
 _hostarch=$(uname -m)
 case "${_hostarch}" in
-*64*)
+*aarch64*)
+  HOSTARCH=arm64
+  ;;
+*arm64*)
+  HOSTARCH=arm64
+  ;;
+*x86_64*)
   HOSTARCH=amd64
   ;;
 *386*)
@@ -75,7 +81,7 @@ ensure_py3_bin() {
   if ! command -v "${1}" >/dev/null 2>&1; then
     echo "User's Python3 binary directory must be in \$PATH" 1>&2
     echo "Location of package is:" 1>&2
-    pip3 show ${2:-$1} | grep "Location"
+    pip3 show --disable-pip-version-check ${2:-$1} | grep "Location"
     echo "\$PATH is currently: $PATH" 1>&2
     exit 1
   fi
@@ -91,5 +97,26 @@ ensure_py3() {
     python3 get-pip.py --user
     rm -f get-pip.py
     ensure_py3_bin pip3
+  fi
+}
+
+pip3_install() {
+  ensure_py3
+  if output=$(pip3 install --disable-pip-version-check --user "${@}" 2>&1); then
+    echo "$output"
+  elif [[ $output == *"error: externally-managed-environment"* ]]; then
+    >&2 echo "warning: externally-managed-environment, retrying pip3 install with --break-system-packages"
+    pip3 install --disable-pip-version-check --user --break-system-packages "${@}"
+  else
+    >&2 echo "$output"
+    exit 1
+  fi
+}
+
+hostarch_without_darwin_arm64() {
+  if [ "${HOSTOS}" == "darwin" ] && [ "${HOSTARCH}" == "arm64" ]; then
+    echo "amd64"
+  else
+    echo ${HOSTARCH}
   fi
 }

@@ -14,8 +14,21 @@
 ---
 - name: Define file modes
   set_fact:
-    last_log_mode:   "0644"
+    last_log_mode: "0644"
     machine_id_mode: "0444"
+
+- name: Get installed packages
+  package_facts:
+
+- name: Create the package list
+  set_fact:
+    package_list: "{{ ansible_facts.packages.keys() | join(' ') }}"
+
+- name: Exclude the packages from upgrades
+  lineinfile:
+    path: /etc/yum.conf
+    regexp: ^exclude=
+    line: exclude={{ package_list }}
 
 - import_tasks: rpm_repos.yml
 
@@ -23,33 +36,38 @@
 - name: Disable swap service and ensure it is masked
   systemd:
     name: temp-disk-swapfile
-    enabled: no
-    masked: yes
+    enabled: false
+    masked: true
   when: ansible_memory_mb.swap.total != 0 and ansible_distribution_major_version|int <= 7
 
 - name: Disable swap service and ensure it is masked on RHEL 8
   systemd:
     name: swap.target
-    enabled: no
-    masked: yes
+    enabled: false
+    masked: true
   when: ansible_memory_mb.swap.total != 0 and ansible_distribution_major_version|int == 8
 
 - name: Remove RHEL subscription
+  when:
+    - ansible_distribution == "RedHat"
+    - lookup('env', 'RHSM_USER') | length > 0
+    - lookup('env', 'RHSM_PASS') | length > 0
   block:
+    - name: Enable repo mgmt with subscription-manager
+      command: subscription-manager config --rhsm.manage_repos=1
     - name: Remove subscriptions
       rhsm_repository:
-        name: '*'
+        name: "*"
         state: absent
     - name: Unregister system
       redhat_subscription:
         state: absent
-    - name: clean local subscription data
+    - name: Clean local subscription data
       command: subscription-manager clean
-  when: ansible_distribution == "RedHat"
 
 - name: Remove yum package caches
   yum:
-    autoremove: yes
+    autoremove: true
     lock_timeout: 60
 
 - name: Remove yum package lists
@@ -57,6 +75,15 @@
 
 - name: Reset network interface IDs
   shell: sed -i '/^\(HWADDR\|UUID\)=/d' /etc/sysconfig/network-scripts/ifcfg-*
+  when: packer_builder_type != "googlecompute" and ansible_distribution_major_version|int != 9
+
+- name: Migrate interface configuration files to NetworkManager keyfiles
+  command: nmcli connection migrate
+  when: packer_builder_type != "googlecompute" and ansible_distribution_major_version|int == 9
+
+- name: Reset network interface IDs
+  shell: sed -i '/^\(uuid\)=/d' /etc/NetworkManager/system-connections/*.nmconnection
+  when: packer_builder_type != "googlecompute" and ansible_distribution_major_version|int == 9
 
 - name: Remove the kickstart log
   file:
