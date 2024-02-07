@@ -3,6 +3,7 @@
   "boot_command_suffix": "/8/ks.cfg<enter><wait><enter>",
   "boot_media_path": "http://{{ .HTTPIP }}:{{ .HTTPPort }}",
   "build_name": "almalinux-8",
+  "cpu_arch": "x86_64",
   "distro_arch": "amd64",
   "distro_name": "almalinux",
   "ssh_username": "almalinux",

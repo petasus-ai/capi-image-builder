@@ -22,10 +22,14 @@ set -o pipefail
 
 source hack/utils.sh
 
+# There is no darwin/arm64 version so we need to default HOSTARCH to amd64 if on an M1/M2 Mac
+HOSTARCH=$(hostarch_without_darwin_arm64)
+
 # SHA are for amd64 arch.
-_version="3.0.3"
-darwin_sha256="279a33eb3102385ff3c0577b0d35c4f218e54dddb53e549c626aed1741c93f34"
-linux_sha256="687fda0873028fb60443339f47412856d08eea1007d274bda25078df426b21bc"
+_version="3.1.4"
+darwin_sha256="ddb663a3e4208639d90b89ebdb69dc240ec16d6b01877ccbf968f76a58a89f99"
+linux_amd64_sha256="9084877c2eea7e41fae60aaa6cdf7a7dde4e5de5e3d1f693ec8e812419ac54e9"
+linux_arm64_sha256="5c3f43800b22cc9a1084f3f700243ea1a2392e12c0ae55987bec91d07b5547ed"
 _bin_url="https://github.com/YaleUniversity/packer-provisioner-goss/releases/download/v${_version}/packer-provisioner-goss-v${_version}-${HOSTOS}-${HOSTARCH}.tar.gz"
 _tarfile="${HOME}/.packer.d/plugins/packer-provisioner-goss.tar.gz"
 _binfile="${HOME}/.packer.d/plugins/packer-provisioner-goss"
@@ -33,7 +37,18 @@ _binfile="${HOME}/.packer.d/plugins/packer-provisioner-goss"
 # Get a shasum for right OS's binary
 case "${HOSTOS}" in
 linux)
-  _sha256="${linux_sha256}"
+  case "${HOSTARCH}" in
+    amd64)
+      _sha256="${linux_amd64_sha256}"
+      ;;
+    arm64)
+      _sha256="${linux_arm64_sha256}"
+      ;;
+    *)
+      echo "unsupported HOSTARCH=${HOSTARCH}" 1>&2
+      return 1
+      ;;
+  esac
   ;;
 darwin)
   _sha256="${darwin_sha256}"

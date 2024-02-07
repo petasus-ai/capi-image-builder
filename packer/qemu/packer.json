@@ -146,7 +146,7 @@
       "use_sudo": true,
       "vars_file": "{{user `goss_vars_file`}}",
       "vars_inline": {
-        "ARCH": "amd64",
+        "ARCH": "{{user `distro_arch`}}",
         "OS": "{{user `distro_name` | lower}}",
         "PROVIDER": "qemu",
         "containerd_version": "{{user `containerd_version`}}",
@@ -169,10 +169,10 @@
     "boot_wait": "10s",
     "build_timestamp": "{{timestamp}}",
     "containerd_sha256": null,
-    "containerd_url": "https://github.com/containerd/containerd/releases/download/v{{user `containerd_version`}}/cri-containerd-cni-{{user `containerd_version`}}-linux-amd64.tar.gz",
+    "containerd_url": "https://github.com/containerd/containerd/releases/download/v{{user `containerd_version`}}/cri-containerd-cni-{{user `containerd_version`}}-linux-{{user `distro_arch`}}.tar.gz",
     "containerd_version": null,
     "cpus": "1",
-    "crictl_url": "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{user `crictl_version`}}/crictl-v{{user `crictl_version`}}-linux-amd64.tar.gz",
+    "crictl_url": "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{user `crictl_version`}}/crictl-v{{user `crictl_version`}}-linux-{{user `distro_arch`}}.tar.gz",
     "crictl_version": null,
     "disk_compression": "false",
     "disk_discard": "unmap",
@@ -200,9 +200,10 @@
     "kubernetes_source_type": null,
     "machine_id_mode": "444",
     "memory": "2048",
+    "arch": "{{user `distro_arch`}}",
     "output_directory": "./output/{{user `build_name`}}-kube-{{user `kubernetes_semver`}}",
     "python_path": "",
-    "qemu_binary": "qemu-system-x86_64",
+    "qemu_binary": "qemu-system-{{user `cpu_arch`}}",
     "ssh_password": "builder",
     "cloud_init_image": "cloudinit/packer.init"
   }

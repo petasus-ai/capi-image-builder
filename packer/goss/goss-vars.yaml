@@ -69,7 +69,7 @@ common_photon_rpms: &common_photon_rpms
   tar:
   unzip:
 
-arch: "amd64"
+arch: ""
 containerd_version: ""
 kubernetes_cni_source_type: ""
 kubernetes_cni_version: ""

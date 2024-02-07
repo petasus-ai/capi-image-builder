@@ -1,5 +1,5 @@
 {
-  "goss_arch": "amd64",
+  "goss_arch": "{{user `distro_arch`}}",
   "goss_download_path": "",
   "goss_entry_file": "goss/goss.yaml",
   "goss_format": "json",
