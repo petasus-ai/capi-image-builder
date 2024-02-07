@@ -184,7 +184,8 @@ PLATFORMS_AND_VERSIONS	:=	$(CENTOS_VERSIONS) \
 							$(WINDOWS_VERSIONS)
 
 QEMU_FLATCAR_BUILD_NAMES	?=	qemu-flatcar
-QEMU_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
+QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
+QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2004-aarch64 qemu-rockylinux-8-uefi-aarch64 qemu-almalinux-8-aarch64
 
 RAW_BUILD_NAMES                        ?=      raw-ubuntu-1804 raw-ubuntu-2004
 
@@ -193,8 +194,10 @@ RAW_BUILD_NAMES                        ?=      raw-ubuntu-1804 raw-ubuntu-2004
 ## --------------------------------------
 QEMU_FLATCAR_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_FLATCAR_BUILD_NAMES))
 QEMU_FLATCAR_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_FLATCAR_BUILD_NAMES))
-QEMU_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_BUILD_NAMES))
-QEMU_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_BUILD_NAMES))
+QEMU_AMD64_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_AMD64_BUILD_NAMES))
+QEMU_ARM64_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_ARM64_BUILD_NAMES))
+QEMU_AMD64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_AMD64_BUILD_NAMES))
+QEMU_ARM64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_ARM64_BUILD_NAMES))
 RAW_BUILD_TARGETS      := $(addprefix build-,$(RAW_BUILD_NAMES))
 RAW_VALIDATE_TARGETS   := $(addprefix validate-,$(RAW_BUILD_NAMES))
 OCI_BUILD_TARGETS	:= $(addprefix build-,$(OCI_BUILD_NAMES))
@@ -210,13 +213,21 @@ $(QEMU_FLATCAR_BUILD_TARGETS): deps-qemu
 $(QEMU_FLATCAR_VALIDATE_TARGETS): deps-qemu
 	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -only=flatcar packer/qemu/packer.json
 
-.PHONY: $(QEMU_BUILD_TARGETS)
-$(QEMU_BUILD_TARGETS): deps-qemu
-	packer build $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+.PHONY: $(QEMU_AMD64_BUILD_TARGETS)
+$(QEMU_AMD64_BUILD_TARGETS): deps-qemu
+	packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
-.PHONY: $(QEMU_VALIDATE_TARGETS)
-$(QEMU_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+.PHONY: $(QEMU_ARM64_BUILD_TARGETS)
+$(QEMU_ARM64_BUILD_TARGETS): deps-qemu
+	packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+
+.PHONY: $(QEMU_AMD64_VALIDATE_TARGETS)
+$(QEMU_AMD64_VALIDATE_TARGETS): deps-qemu
+	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+
+.PHONY: $(QEMU_ARM64_VALIDATE_TARGETS)
+$(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
+	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
 .PHONY: $(RAW_BUILD_TARGETS)
 $(RAW_BUILD_TARGETS): deps-raw
@@ -247,12 +258,17 @@ $(RAW_CLEAN_TARGETS):
 build-qemu-flatcar: ## Builds Flatcar QEMU image
 build-qemu-ubuntu-1804: ## Builds Ubuntu 18.04 QEMU image
 build-qemu-ubuntu-2004: ## Builds Ubuntu 20.04 QEMU image
+build-qemu-ubuntu-2004-aarch64: ## Builds Ubuntu 20.04 arm QEMU image
 build-qemu-ubuntu-2204: ## Builds Ubuntu 22.04 QEMU image
 build-qemu-centos-7: ## Builds CentOS 7 QEMU image
 build-qemu-rockylinux-8: ## Builds Rocky 8 QEMU image
 build-qemu-rockylinux-8-uefi: ## Builds Rocky 8 UEFI QEMU image
+build-qemu-rockylinux-8-uefi-aarch64: ## Builds Rocky 8 UEFI arm QEMU image
 build-qemu-almalinux-8: ## Builds AlmaLinux 8 QEMU image
-build-qemu-all: $(QEMU_BUILD_TARGETS) ## Builds all Qemu images
+build-qemu-almalinux-8-aarch64: ## Builds AlmaLinux 8 arm QEMU image
+build-qemu-amd64-all: $(QEMU_AMD64_BUILD_TARGETS) ## Builds all amd64 Qemu images
+build-qemu-arm64-all: $(QEMU_ARM64_BUILD_TARGETS) ## Builds all arm64 Qemu images
+build-qemu-all: $(QEMU_AMD64_BUILD_TARGETS) $(QEMU_ARM64_BUILD_TARGETS) ## Builds all Qemu images
 
 build-raw-ubuntu-1804: ## Builds Ubuntu 18.04 RAW image
 build-raw-ubuntu-2004: ## Builds Ubuntu 20.04 RAW image

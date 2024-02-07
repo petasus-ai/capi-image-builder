@@ -5,9 +5,10 @@
   "distro_name": "ubuntu",
   "ssh_username": "ubuntu",
   "guest_os_type": "ubuntu-64",
-  "iso_checksum": "62bdefa0724aa964424205dffa0cf8f501e2c515cdbb8a5d596b277e550c15bd",
+  "machine_type": "virt",
+  "iso_checksum": "532d5bfdb80bd346f1757157a2050e963d773f3a4b02db6946e67e0e97fc2fc8",
   "iso_checksum_type": "sha256",
-  "iso_url": "https://cloud-images.ubuntu.com/focal/20240206/focal-server-cloudimg-amd64.img",
+  "iso_url": "https://cloud-images.ubuntu.com/focal/20240206/focal-server-cloudimg-arm64.img",
   "os_display_name": "Ubuntu 20.04",
   "shutdown_command": "shutdown -P now"
 }
