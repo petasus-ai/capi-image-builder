@@ -24,6 +24,7 @@
       "ssh_timeout": "2h",
       "ssh_username": "{{user `ssh_username`}}",
       "type": "qemu",
+      "machine_type": "{{user `machine_type`}}",
       "qemuargs": [
          [
            "-m",
@@ -200,7 +201,6 @@
     "kubernetes_source_type": null,
     "machine_id_mode": "444",
     "memory": "2048",
-    "arch": "{{user `distro_arch`}}",
     "output_directory": "./output/{{user `build_name`}}-kube-{{user `kubernetes_semver`}}",
     "python_path": "",
     "qemu_binary": "qemu-system-{{user `cpu_arch`}}",

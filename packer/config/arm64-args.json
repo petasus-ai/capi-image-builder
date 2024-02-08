@@ -1,0 +1,8 @@
+{
+  "cpu_arch": "aarch64",
+  "distro_arch": "arm64",
+  "machine_type": "virt",
+  "firmware": "/usr/share/edk2/aarch64/QEMU_EFI.fd",
+  "memory": "16384",
+  "cpus": "8"
+}
