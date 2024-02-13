@@ -110,7 +110,7 @@ jobs:
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
           sudo docker tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
           sudo docker push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
-          sudo docker push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
 
   build-rockylinux-8-amd64:
