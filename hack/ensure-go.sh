@@ -20,11 +20,16 @@ set -o pipefail
 
 [[ -n ${DEBUG:-} ]] && set -o xtrace
 
+source hack/utils.sh
+
+# There is no darwin/arm64 version so we need to default HOSTARCH to amd64 if on an M1/M2 Mac
+HOSTARCH=$(hostarch_without_darwin_arm64)
+
 # Ensure the go tool exists and is a viable version.
 verify_go_version() {
   if [[ -z "$(command -v go)" ]]; then
     if [[ "${INSTALL_GO:-"true"}" == "true" ]]; then
-      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.3"}.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+      curl -sSL https://golang.org/dl/go${GO_VERSION:-"1.16.3"}.linux-${HOSTARCH}.tar.gz | tar -C /usr/local -xzf -
       export PATH=/usr/local/go/bin:$PATH
       export PATH=$(go env GOPATH)/bin:$PATH
     else
