@@ -17,3 +17,12 @@
     name: libseccomp
     state: present
     lock_timeout: 60
+
+- name: Configure nvidia container toolkit repository
+  shell: |
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
+    sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
+
+- name: Install nvidia-container-toolkit package
+  yum:
+    name: nvidia-container-toolkit
