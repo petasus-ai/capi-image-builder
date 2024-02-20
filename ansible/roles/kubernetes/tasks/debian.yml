@@ -19,7 +19,7 @@
 
 - name: Add the Kubernetes repo
   apt_repository:
-    repo: "deb {{ kubernetes_deb_repo }} main"
+    repo: "deb {{ kubernetes_deb_repo }} /"
     update_cache: True
     state: present
     mode: 0644
@@ -33,7 +33,7 @@
       - "kubelet={{ kubernetes_deb_version }}"
       - "kubeadm={{ kubernetes_deb_version }}"
       - "kubectl={{ kubernetes_deb_version }}"
-      - "kubernetes-cni={{ kubernetes_cni_deb_version }}"
+      - "kubernetes-cni{{ '='+kubernetes_cni_deb_version if kubernetes_cni_deb_version else '' }}"
 
 - name: Install bash-completion
   apt:
