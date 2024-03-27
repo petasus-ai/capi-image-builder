@@ -18,6 +18,36 @@
     state: present
     lock_timeout: 60
 
+- name: Configure nvidia driver repository
+  shell: |
+    curl -s -L https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo | \
+    sudo tee /etc/yum.repos.d/cuda-rhel8.repo
+
+- name: Obtain kernel version
+  command: "uname -r"
+  register: kernel_version_result
+
+- name: Configure kernel version
+  set_fact:
+    kernel_version: "{{ kernel_version_result.stdout }}"
+
+- name: Install kernel-devel and kernel-headers
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - kernel-devel-{{ kernel_version }}
+    - kernel-headers-{{ kernel_version }}
+
+- name: Install nvidia-driver and cuda-driver
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - nvidia-driver
+    - nvidia-settings
+    - cuda-driver
+
 - name: Configure nvidia container toolkit repository
   shell: |
     curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
@@ -26,3 +56,4 @@
 - name: Install nvidia-container-toolkit package
   yum:
     name: nvidia-container-toolkit
+    state: present
