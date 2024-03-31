@@ -137,7 +137,7 @@
     src: etc/crictl.yaml
 
 - name: Configure nvidia containerd runtime
-  shell: "nvidia-ctk runtime configure --runtime=containerd"
+  shell: "nvidia-ctk runtime configure --runtime=containerd --set-as-default"
 
 - name: start containerd service
   systemd:
