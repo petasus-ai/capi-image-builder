@@ -4,6 +4,7 @@
   "extra_debs": "",
   "extra_repos": "",
   "extra_rpms": "",
+  "gpu_provider": "",
   "http_proxy": "",
   "https_proxy": "",
   "no_proxy": "",

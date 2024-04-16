@@ -12,3 +12,5 @@ manifest.json
 *.pwd
 *.pwi
 .idea/
+*.patch
+*goss-spec.yaml
