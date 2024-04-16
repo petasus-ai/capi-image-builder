@@ -22,14 +22,17 @@
   shell: |
     curl -s -L https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo | \
     sudo tee /etc/yum.repos.d/cuda-rhel8.repo
+  when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
 
 - name: Obtain kernel version
   command: "uname -r"
   register: kernel_version_result
+  when: gpu_provider == "nvidia"
 
 - name: Configure kernel version
   set_fact:
     kernel_version: "{{ kernel_version_result.stdout }}"
+  when: gpu_provider == "nvidia"
 
 - name: Install kernel-devel and kernel-headers
   yum:
@@ -38,6 +41,7 @@
   with_items:
     - kernel-devel-{{ kernel_version }}
     - kernel-headers-{{ kernel_version }}
+  when: gpu_provider == "nvidia"
 
 - name: Install nvidia-driver and cuda-driver
   yum:
@@ -47,13 +51,16 @@
     - nvidia-driver
     - nvidia-settings
     - cuda-driver
+  when: gpu_provider == "nvidia"
 
 - name: Configure nvidia container toolkit repository
   shell: |
     curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
     sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
+  when: gpu_provider == "nvidia"
 
 - name: Install nvidia-container-toolkit package
   yum:
     name: nvidia-container-toolkit
     state: present
+  when: gpu_provider == "nvidia"
