@@ -1,0 +1,167 @@
+on:
+  workflow_dispatch:
+    inputs:
+      kube_version:
+        description: "kubernetes version"
+        type: string
+        required: true
+  push:
+    tags:
+      - v*.*.*
+jobs:
+  build-ubuntu-2004-nvidia-amd64:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"gpu_provider\": \"\"/\"gpu_provider\": \"nvidia\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-ubuntu-2004
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker tag quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
+          sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+
+
+  build-almalinux-8-nvidia-amd64:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"gpu_provider\": \"\"/\"gpu_provider\": \"nvidia\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-almalinux-8
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker tag quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
+          sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+
+  build-rockylinux-8-nvidia-amd64:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"gpu_provider\": \"\"/\"gpu_provider\": \"nvidia\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-rockylinux-8-uefi
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker tag quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
+          sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
