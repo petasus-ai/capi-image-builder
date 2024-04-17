@@ -24,6 +24,12 @@
     sudo tee /etc/yum.repos.d/cuda-rhel8.repo
   when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
 
+- name: Configure nvidia driver repository
+  shell: |
+    curl -s -L https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo | \
+    sudo tee /etc/yum.repos.d/cuda-rhel8.repo
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+
 - name: Obtain kernel version
   command: "uname -r"
   register: kernel_version_result
@@ -51,7 +57,16 @@
     - nvidia-driver
     - nvidia-settings
     - cuda-driver
-  when: gpu_provider == "nvidia"
+  when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
+
+- name: Install nvidia-driver and cuda-driver
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - nvidia-driver
+    - nvidia-settings
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
 
 - name: Configure nvidia container toolkit repository
   shell: |

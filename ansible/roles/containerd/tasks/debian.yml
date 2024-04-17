@@ -23,6 +23,12 @@
     sudo dpkg -i cuda-keyring_1.1-1_all.deb
   when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
 
+- name: Configure nvidia driver repository
+  shell: |
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/sbsa/cuda-keyring_1.1-1_all.deb && \
+    sudo dpkg -i cuda-keyring_1.1-1_all.deb
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+
 - name: Install nvidia-driver and cuda-driver
   apt:
     name: "{{ item }}"
