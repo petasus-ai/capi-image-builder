@@ -61,6 +61,20 @@ jobs:
           sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+
+          sudo docker manifest create quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-almalinux-8-nvidia-amd64:
     runs-on:
@@ -114,6 +128,21 @@ jobs:
           sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+            quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+            quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          
+          sudo docker manifest create quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+
   build-rockylinux-8-nvidia-amd64:
     runs-on:
       - self-hosted
@@ -165,6 +194,21 @@ jobs:
           sudo docker tag quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
           sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+          quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+          quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          
+          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-ubuntu-2004-nvidia-arm64:
     runs-on:
@@ -222,6 +266,20 @@ jobs:
           sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+
+          sudo docker manifest create quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-almalinux-8-nvidia-arm64:
     runs-on:
@@ -275,6 +333,20 @@ jobs:
           sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+            quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+            quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/almalinux-8-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          
+          sudo docker manifest create quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/almalinux-8-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-rockylinux-8-nvidia-arm64:
     runs-on:
@@ -327,3 +399,18 @@ jobs:
           sudo docker tag quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
           sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
+
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }} \
+          quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 \
+          quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-nvidia-kube:${{ steps.patch-version.outputs.kube-version }}
+          
+          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
+            quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
+            quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
+          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-nvidia-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
