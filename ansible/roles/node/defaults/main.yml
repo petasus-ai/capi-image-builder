@@ -80,7 +80,7 @@ common_photon_rpms:
 - unzip
 
 common_virt_rpms:
-- open-vm-tools
+- curl
 
 common_virt_debs:
 - linux-cloud-tools-virtual

@@ -133,7 +133,7 @@ centos:
       <<: *rh7_rpms
   qemu:
     package:
-      open-vm-tools:
+#      open-vm-tools:
       cloud-init:
       cloud-utils-growpart:
       python2-pip:
@@ -202,7 +202,7 @@ rhel:
       <<: *rh7_rpms
   qemu:
     package:
-      open-vm-tools:
+#      open-vm-tools:
       cloud-init:
       cloud-utils-growpart:
       python2-pip:
