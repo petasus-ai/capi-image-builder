@@ -56,17 +56,7 @@
   with_items:
     - nvidia-driver
     - nvidia-settings
-    - cuda-driver
-  when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
-
-- name: Install nvidia-driver and cuda-driver
-  yum:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - nvidia-driver
-    - nvidia-settings
-  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+  when: gpu_provider == "nvidia"
 
 - name: Configure nvidia container toolkit repository
   shell: |
