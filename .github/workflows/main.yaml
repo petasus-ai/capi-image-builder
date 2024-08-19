@@ -54,10 +54,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-version }}-amd64 output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
-          sudo docker push quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
       - name: Create container image manifests
@@ -68,12 +66,6 @@ jobs:
             quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}
-
-          sudo docker manifest create quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-almalinux-8-amd64:
     runs-on:
@@ -120,10 +112,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-version }}-amd64 output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
-          sudo docker push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
       - name: Create container image manifests
@@ -134,12 +124,6 @@ jobs:
             quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}
-          
-          sudo docker manifest create quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-rockylinux-8-amd64:
     runs-on:
@@ -186,10 +170,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-version }}-amd64 output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
-          sudo docker push quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64
           sudo docker push quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
       - name: Create container image manifests
@@ -200,12 +182,6 @@ jobs:
           quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
-          
-          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-ubuntu-2004-arm64:
     runs-on:
@@ -256,10 +232,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-version }}-aarch64 output/ubuntu-2004-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
-          sudo docker push quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
       - name: Create container image manifests
@@ -270,12 +244,6 @@ jobs:
             quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/ubuntu-2004-kube:${{ steps.patch-version.outputs.kube-version }}
-          
-          sudo docker manifest create quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/ubuntu-2004-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
 
   build-almalinux-8-arm64:
     runs-on:
@@ -322,10 +290,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-version }}-aarch64 output/almalinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
-          sudo docker push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
       - name: Create container image manifests
@@ -336,13 +302,6 @@ jobs:
             quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/almalinux-8-kube:${{ steps.patch-version.outputs.kube-version }}
-          
-          sudo docker manifest create quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/almalinux-8-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          
 
   build-rockylinux-8-arm64:
     runs-on:
@@ -389,10 +348,8 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-version }}-aarch64 output/rockylinux-8-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker tag quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
-          sudo docker push quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64
           sudo docker push quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
       - name: Create container image manifests
@@ -403,9 +360,3 @@ jobs:
             quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
-
-          sudo docker manifest create quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }} \
-            quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-aarch64 \
-            quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
-          sudo docker manifest rm quay.io/edgestack/rocky-8-uefi-kube:v${{ steps.patch-version.outputs.kube-minor-version }}
