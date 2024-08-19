@@ -225,7 +225,7 @@ jobs:
           TAG_REF: ${{ github.ref_name }}
 
       - name: Build image
-        run: make build-qemu-ubuntu-2004-nvidia-aarch64
+        run: make build-qemu-ubuntu-2004-aarch64
 
       - name: Create Dockerfile
         run: |
@@ -284,7 +284,7 @@ jobs:
           TAG_REF: ${{ github.ref_name }}
 
       - name: Build image
-        run: make build-qemu-almalinux-8-nvidia-aarch64
+        run: make build-qemu-almalinux-8-aarch64
 
       - name: Create Dockerfile
         run: |
@@ -343,7 +343,7 @@ jobs:
           TAG_REF: ${{ github.ref_name }}
 
       - name: Build image
-        run: make build-qemu-rockylinux-8-uefi-nvidia-aarch64
+        run: make build-qemu-rockylinux-8-uefi-aarch64
 
       - name: Create Dockerfile
         run: |
