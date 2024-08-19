@@ -11,8 +11,8 @@
   "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8",
   "guest_os_type": "linux-64",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-  "iso_url": "https://dl.rockylinux.org/pub/rocky/8/images/aarch64/Rocky-8-GenericCloud-Base-8.9-20231119.0.aarch64.qcow2",
-  "iso_checksum": "801c1afc27b8d200702193312c342f39f1418ed37f8501e6f07e9f707196df44",
+  "iso_url": "https://dl.rockylinux.org/pub/rocky/8/images/aarch64/Rocky-8-GenericCloud-Base-8.10-20240528.0.aarch64.qcow2",
+  "iso_checksum": "946b5b9845aa5e3ed98f1bc6ee9873201712a2aef01b87731aed16857e0ca13f",
   "iso_checksum_type": "sha256",
   "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm",
   "shutdown_command": "/sbin/halt -h -p"
