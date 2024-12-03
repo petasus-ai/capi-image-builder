@@ -49,13 +49,8 @@
     - kernel-headers-{{ kernel_version }}
   when: gpu_provider == "nvidia"
 
-- name: Install nvidia-driver and cuda-driver
-  yum:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - nvidia-driver
-    - nvidia-settings
+- name: Install NVIDIA Driver module
+  command: dnf module install -y nvidia-driver
   when: gpu_provider == "nvidia"
 
 - name: Configure nvidia container toolkit repository
