@@ -49,6 +49,30 @@
     - kernel-headers-{{ kernel_version }}
   when: gpu_provider == "nvidia"
 
+- name: Install epel-release
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - epel-release
+
+- name: Install DNF plugins core
+  dnf:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+
+- name: Enable Powertools repository
+  command: dnf config-manager --set-enabled powertools
+  ignore_errors: yes
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+
+- name: Install opencl-filesystem
+  dnf:
+    name: opencl-filesystem
+    state: present
+  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
+
 - name: Install NVIDIA Driver module
   command: dnf module install -y nvidia-driver
   when: gpu_provider == "nvidia"
