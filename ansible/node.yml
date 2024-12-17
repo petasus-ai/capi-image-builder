@@ -38,8 +38,6 @@
     - include_role:
         name: addons
     - include_role:
-        name: firewall
-    - include_role:
         name: security
     - include_role:
         name: customize
