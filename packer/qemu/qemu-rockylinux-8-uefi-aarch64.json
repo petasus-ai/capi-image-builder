@@ -5,7 +5,6 @@
   "build_name": "rockylinux-8",
   "distro_name": "rockylinux",
   "os_display_name": "RockyLinux 8",
-  "qemu_binary": "qemu-system-aarch64",
   "ssh_username": "rocky",
   "distro_version": "8",
   "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8",

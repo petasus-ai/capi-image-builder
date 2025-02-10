@@ -8,7 +8,6 @@
   "distro_version": "8",
   "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8",
   "guest_os_type": "centos8-64",
-  "firmware": "/usr/share/edk2.git/ovmf-x64/OVMF_CODE-pure-efi.fd",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
   "iso_checksum": "e56066c58606191e96184de9a9183a3af33c59bcbd8740d8b10ca054a7a89c14",
   "iso_checksum_type": "sha256",

@@ -2,6 +2,7 @@
   "cpu_arch": "x86_64",
   "distro_arch": "amd64",
   "machine_type": "pc",
+  "firmware": "/usr/share/edk2.git/ovmf-x64/OVMF_CODE-pure-efi.fd",
   "memory": "2048",
   "cpus": "1"
 }
