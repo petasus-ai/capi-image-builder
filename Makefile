@@ -163,7 +163,7 @@ FLATCAR_VERSIONS		:=	flatcar
 PHOTON_VERSIONS			:=	photon-3
 ROCKYLINUX_VERSIONS     	:=  	rockylinux-8 rockylinux-8-uefi
 ALMALINUX_VERSIONS		:=	almalinux-8
-UBUNTU_VERSIONS			:=	ubuntu-1804 ubuntu-2004 ubuntu-2204
+UBUNTU_VERSIONS			:=	ubuntu-1804 ubuntu-2004 ubuntu-2204 ubuntu-2404
 WINDOWS_VERSIONS		:=	windows-2019 windows-2004 windows-2022
 
 # Set Flatcar Container Linux channel and version if not supplied
@@ -184,7 +184,7 @@ PLATFORMS_AND_VERSIONS	:=	$(CENTOS_VERSIONS) \
 							$(WINDOWS_VERSIONS)
 
 QEMU_FLATCAR_BUILD_NAMES	?=	qemu-flatcar
-QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
+QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-ubuntu-2404 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
 QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2004-aarch64 qemu-rockylinux-8-uefi-aarch64 qemu-almalinux-8-aarch64
 
 RAW_BUILD_NAMES                        ?=      raw-ubuntu-1804 raw-ubuntu-2004
@@ -260,6 +260,7 @@ build-qemu-ubuntu-1804: ## Builds Ubuntu 18.04 QEMU image
 build-qemu-ubuntu-2004: ## Builds Ubuntu 20.04 QEMU image
 build-qemu-ubuntu-2004-aarch64: ## Builds Ubuntu 20.04 arm QEMU image
 build-qemu-ubuntu-2204: ## Builds Ubuntu 22.04 QEMU image
+build-qemu-ubuntu-2404: ## Builds Ubuntu 24.04 QEMU image
 build-qemu-centos-7: ## Builds CentOS 7 QEMU image
 build-qemu-rockylinux-8: ## Builds Rocky 8 QEMU image
 build-qemu-rockylinux-8-uefi: ## Builds Rocky 8 UEFI QEMU image
@@ -282,6 +283,7 @@ validate-qemu-flatcar: ## Validates Flatcar QEMU image packer config
 validate-qemu-ubuntu-1804: ## Validates Ubuntu 18.04 QEMU image packer config
 validate-qemu-ubuntu-2004: ## Validates Ubuntu 20.04 QEMU image packer config
 validate-qemu-ubuntu-2204: ## Validates Ubuntu 22.04 QEMU image packer config
+validate-qemu-ubuntu-2404: ## Validates Ubuntu 24.04 QEMU image packer config
 validate-qemu-centos-7: ## Validates CentOS 7 QEMU image packer config
 validate-qemu-rockylinux-8: ## Validates Rocky Linux 8 QEMU image packer config
 validate-qemu-rockylinux-8-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
