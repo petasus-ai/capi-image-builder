@@ -1,0 +1,18 @@
+{
+  "boot_command_prefix": "<up><tab> text inst.ks=",
+  "boot_command_suffix": "/9/ks.cfg<enter><wait><enter>",
+  "boot_media_path": "http://{{ .HTTPIP }}:{{ .HTTPPort }}",
+  "build_name": "rockylinux-9",
+  "distro_name": "rockylinux",
+  "ssh_username": "rocky",
+  "distro_version": "9",
+  "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9",
+  "guest_os_type": "centos9-64",
+  "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
+  "iso_checksum": "069493fdc807300a22176540e9171fcff2227a92b40a7985a0c1c9e21aeebf57",
+  "iso_checksum_type": "sha256",
+  "iso_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base-9.5-20241118.0.x86_64.qcow2",
+  "os_display_name": "RockyLinux 9",
+  "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
+  "shutdown_command": "/sbin/halt -h -p"
+}

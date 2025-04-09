@@ -47,19 +47,12 @@ version: ## Display version of image-builder
 ##@ Dependencies
 
 .PHONY: deps
-deps: ## Installs/checks all dependencies
-deps: deps-qemu deps-raw
+## Installs/checks all dependencies
+deps: deps-qemu
 
+## Installs/checks dependencies for QEMU builds
 .PHONY: deps-qemu
-deps-qemu: ## Installs/checks dependencies for QEMU builds
 deps-qemu:
-	hack/ensure-ansible.sh
-	hack/ensure-packer.sh
-	hack/ensure-goss.sh
-
-.PHONY: deps-raw
-deps-raw: ## Installs/checks dependencies for RAW builds
-deps-raw:
 	hack/ensure-ansible.sh
 	hack/ensure-packer.sh
 	hack/ensure-goss.sh
@@ -138,10 +131,6 @@ COMMON_NODE_VAR_FILES :=	packer/config/kubernetes.json \
 					packer/config/common.json \
 					packer/config/additional_components.json
 
-COMMON_HAPROXY_VAR_FILES := packer/ova/packer-common.json \
-					packer/config/ansible-args.json \
-					packer/config/common.json
-
 # Initialize a list of flags to pass to Packer. This includes any existing flags
 # specified by PACKER_FLAGS, as well as prefixing the list with the variable
 # files from COMMON_VAR_FILES, with each file prefixed by -var-file=.
@@ -149,69 +138,25 @@ COMMON_HAPROXY_VAR_FILES := packer/ova/packer-common.json \
 # Any existing values from PACKER_FLAGS take precendence over variable files.
 PACKER_NODE_FLAGS := $(foreach f,$(abspath $(COMMON_NODE_VAR_FILES)),-var-file="$(f)" ) \
 				$(PACKER_FLAGS)
-PACKER_HAPROXY_FLAGS := $(foreach f,$(abspath $(COMMON_HAPROXY_VAR_FILES)),-var-file="$(f)" ) \
-				$(PACKER_FLAGS)
 ABSOLUTE_PACKER_VAR_FILES := $(foreach f,$(abspath $(PACKER_VAR_FILES)),-var-file="$(f)" )
-PACKER_WINDOWS_NODE_FLAGS := $(foreach f,$(abspath $(COMMON_WINDOWS_VAR_FILES)),-var-file="$(f)" ) \
-				$(PACKER_FLAGS)
 
 ## --------------------------------------
 ## Platform and version combinations
 ## --------------------------------------
-CENTOS_VERSIONS			:=	centos-7
-FLATCAR_VERSIONS		:=	flatcar
-PHOTON_VERSIONS			:=	photon-3
-ROCKYLINUX_VERSIONS     	:=  	rockylinux-8 rockylinux-8-uefi
-ALMALINUX_VERSIONS		:=	almalinux-8
-UBUNTU_VERSIONS			:=	ubuntu-1804 ubuntu-2004 ubuntu-2204 ubuntu-2404
-WINDOWS_VERSIONS		:=	windows-2019 windows-2004 windows-2022
+ROCKYLINUX_VERSIONS     :=  rockylinux-9-uefi
+ALMALINUX_VERSIONS		:=	almalinux-9
+UBUNTU_VERSIONS			:=	ubuntu-2404
 
-# Set Flatcar Container Linux channel and version if not supplied
-FLATCAR_CHANNEL ?= stable
-FLATCAR_VERSION ?= 2905.2.3
-ifeq ($(FLATCAR_VERSION),current)
-FLATCAR_VERSION := $(shell hack/image-grok-latest-flatcar-version.sh $(FLATCAR_CHANNEL))
-endif
-
-export FLATCAR_CHANNEL FLATCAR_VERSION
-
-PLATFORMS_AND_VERSIONS	:=	$(CENTOS_VERSIONS) \
-							$(PHOTON_VERSIONS) \
-							$(RHEL_VERSIONS) \
-							$(ROCKYLINUX_VERSIONS) \
-							$(ALMALINUX_VERSIONS) \
-							$(UBUNTU_VERSIONS) \
-							$(WINDOWS_VERSIONS)
-
-QEMU_FLATCAR_BUILD_NAMES	?=	qemu-flatcar
-QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-1804 qemu-ubuntu-2004 qemu-ubuntu-2204 qemu-ubuntu-2404 qemu-centos-7 qemu-rockylinux-8 qemu-rockylinux-8-uefi qemu-almalinux-8
-QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2004-aarch64 qemu-rockylinux-8-uefi-aarch64 qemu-almalinux-8-aarch64
-
-RAW_BUILD_NAMES                        ?=      raw-ubuntu-1804 raw-ubuntu-2004
+QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-9-uefi qemu-almalinux-9
+QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-9-uefi-aarch64 qemu-almalinux-9-aarch64
 
 ## --------------------------------------
 ## Dynamic build targets
 ## --------------------------------------
-QEMU_FLATCAR_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_FLATCAR_BUILD_NAMES))
-QEMU_FLATCAR_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_FLATCAR_BUILD_NAMES))
 QEMU_AMD64_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_AMD64_BUILD_NAMES))
 QEMU_ARM64_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_ARM64_BUILD_NAMES))
 QEMU_AMD64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_AMD64_BUILD_NAMES))
 QEMU_ARM64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_ARM64_BUILD_NAMES))
-RAW_BUILD_TARGETS      := $(addprefix build-,$(RAW_BUILD_NAMES))
-RAW_VALIDATE_TARGETS   := $(addprefix validate-,$(RAW_BUILD_NAMES))
-OCI_BUILD_TARGETS	:= $(addprefix build-,$(OCI_BUILD_NAMES))
-OCI_VALIDATE_TARGETS	:= $(addprefix validate-,$(OCI_BUILD_NAMES))
-VBOX_BUILD_TARGETS      := $(addprefix build-,$(VBOX_BUILD_NAMES))
-VBOX_VALIDATE_TARGETS   := $(addprefix validate-,$(VBOX_BUILD_NAMES))
-
-.PHONY: $(QEMU_FLATCAR_BUILD_TARGETS)
-$(QEMU_FLATCAR_BUILD_TARGETS): deps-qemu
-	packer build $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -only=flatcar packer/qemu/packer.json
-
-.PHONY: $(QEMU_FLATCAR_VALIDATE_TARGETS)
-$(QEMU_FLATCAR_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -only=flatcar packer/qemu/packer.json
 
 .PHONY: $(QEMU_AMD64_BUILD_TARGETS)
 $(QEMU_AMD64_BUILD_TARGETS): deps-qemu
@@ -229,14 +174,6 @@ $(QEMU_AMD64_VALIDATE_TARGETS): deps-qemu
 $(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
 	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
-.PHONY: $(RAW_BUILD_TARGETS)
-$(RAW_BUILD_TARGETS): deps-raw
-	packer build $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/raw/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/raw/packer.json
-
-.PHONY: $(RAW_VALIDATE_TARGETS)
-$(RAW_VALIDATE_TARGETS): deps-raw
-	packer validate $(PACKER_NODE_FLAGS) -var-file="$(abspath packer/raw/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/raw/packer.json
-
 
 ## --------------------------------------
 ## Dynamic clean targets
@@ -246,58 +183,33 @@ QEMU_CLEAN_TARGETS := $(subst build-,clean-,$(QEMU_BUILD_TARGETS))
 $(QEMU_CLEAN_TARGETS):
 	rm -fr output/$(subst clean-qemu-,,$@)-kube*
 
-RAW_CLEAN_TARGETS := $(subst build-,clean-,$(RAW_BUILD_TARGETS))
-.PHONY: $(RAW_CLEAN_TARGETS)
-$(RAW_CLEAN_TARGETS):
-	rm -fr output/$(subst clean-raw-,,$@)-kube*
-
 ## --------------------------------------
 ## Document dynamic build targets
 ## --------------------------------------
 ##@ Builds
-build-qemu-flatcar: ## Builds Flatcar QEMU image
-build-qemu-ubuntu-1804: ## Builds Ubuntu 18.04 QEMU image
-build-qemu-ubuntu-2004: ## Builds Ubuntu 20.04 QEMU image
-build-qemu-ubuntu-2004-aarch64: ## Builds Ubuntu 20.04 arm QEMU image
-build-qemu-ubuntu-2204: ## Builds Ubuntu 22.04 QEMU image
 build-qemu-ubuntu-2404: ## Builds Ubuntu 24.04 QEMU image
-build-qemu-centos-7: ## Builds CentOS 7 QEMU image
-build-qemu-rockylinux-8: ## Builds Rocky 8 QEMU image
-build-qemu-rockylinux-8-uefi: ## Builds Rocky 8 UEFI QEMU image
-build-qemu-rockylinux-8-uefi-aarch64: ## Builds Rocky 8 UEFI arm QEMU image
-build-qemu-almalinux-8: ## Builds AlmaLinux 8 QEMU image
-build-qemu-almalinux-8-aarch64: ## Builds AlmaLinux 8 arm QEMU image
+build-qemu-ubuntu-2404-aarch64: ## Builds Ubuntu 24.04 arm QEMU image
+build-qemu-rockylinux-9-uefi: ## Builds Rocky 8 UEFI QEMU image
+build-qemu-rockylinux-9-uefi-aarch64: ## Builds Rocky 8 UEFI arm QEMU image
+build-qemu-almalinux-9: ## Builds AlmaLinux 8 QEMU image
+build-qemu-almalinux-9-aarch64: ## Builds AlmaLinux 8 arm QEMU image
 build-qemu-amd64-all: $(QEMU_AMD64_BUILD_TARGETS) ## Builds all amd64 Qemu images
 build-qemu-arm64-all: $(QEMU_ARM64_BUILD_TARGETS) ## Builds all arm64 Qemu images
 build-qemu-all: $(QEMU_AMD64_BUILD_TARGETS) $(QEMU_ARM64_BUILD_TARGETS) ## Builds all Qemu images
-
-build-raw-ubuntu-1804: ## Builds Ubuntu 18.04 RAW image
-build-raw-ubuntu-2004: ## Builds Ubuntu 20.04 RAW image
-build-raw-all: $(RAW_BUILD_TARGETS) ## Builds all RAW images
 
 ## --------------------------------------
 ## Document dynamic validate targets
 ## --------------------------------------
 ##@ Validate packer config
-validate-qemu-flatcar: ## Validates Flatcar QEMU image packer config
-validate-qemu-ubuntu-1804: ## Validates Ubuntu 18.04 QEMU image packer config
-validate-qemu-ubuntu-2004: ## Validates Ubuntu 20.04 QEMU image packer config
-validate-qemu-ubuntu-2204: ## Validates Ubuntu 22.04 QEMU image packer config
 validate-qemu-ubuntu-2404: ## Validates Ubuntu 24.04 QEMU image packer config
-validate-qemu-centos-7: ## Validates CentOS 7 QEMU image packer config
-validate-qemu-rockylinux-8: ## Validates Rocky Linux 8 QEMU image packer config
-validate-qemu-rockylinux-8-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
-validate-qemu-almalinux-8: ## Validates Alma Linux 8 QEMU image packer config
-validate-qemu-all: $(QEMU_VALIDATE_TARGETS) validate-qemu-flatcar ## Validates all Qemu Packer config
+validate-qemu-ubuntu-2404-aarch64: ## Validates Ubuntu 24.04 QEMU image packer config
+validate-qemu-rockylinux-9-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
+validate-qemu-rockylinux-9-uefi-aarch64: ## Validates Rocky Linux 8 UEFI QEMU image packer config
+validate-qemu-almalinux-9: ## Validates Alma Linux 8 QEMU image packer config
+validate-qemu-almalinux-9-aarch64: ## Validates Alma Linux 8 QEMU image packer config
+validate-qemu-all: $(QEMU_AMD64_VALIDATE_TARGETS) $(QEMU_ARM64_VALIDATE_TARGETS) ## Validates all Qemu Packer config
 
-validate-raw-ubuntu-1804: ## Validates Ubuntu 18.04 RAW image packer config
-validate-raw-ubuntu-2004: ## Validates Ubuntu 20.04 RAW image packer config
-validate-raw-all: $(RAW_VALIDATE_TARGETS) ## Validates all RAW Packer config
-
-validate-all: validate-qemu-flatcar \
-        validate-qemu-all \
-        validate-raw-all
-validate-all: ## Validates the Packer config for all build targets
+validate-all: validate-qemu-all
 
 ## --------------------------------------
 ## Clean targets
@@ -310,10 +222,6 @@ clean: $(QEMU_CLEAN_TARGETS) clean-packer-cache
 .PHONY: clean-qemu
 clean-qemu: ## Removes all qemu image output directories (see NOTE at top of help)
 clean-qemu: $(QEMU_CLEAN_TARGETS)
-
-.PHONY: clean-raw
-clean-raw: ## Removes all raw image output directories (see NOTE at top of help)
-clean-raw: $(RAW_CLEAN_TARGETS)
 
 .PHONY: clean-packer-cache
 clean-packer-cache: ## Removes the packer cache
