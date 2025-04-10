@@ -48,6 +48,7 @@
     sysctl_file: "{{ sysctl_conf_file }}"
     reload: yes
   loop:
+    - { param: fs.inotify.max_user_instances, val: 1024 }
     - { param: net.bridge.bridge-nf-call-iptables, val: 1 }
     - { param: net.bridge.bridge-nf-call-ip6tables, val: 1 }
     - { param: net.ipv4.ip_forward, val: 1 }
