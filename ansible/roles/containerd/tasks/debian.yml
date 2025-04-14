@@ -16,38 +16,3 @@
   apt:
     name: libseccomp2
     state: present
-
-- name: Configure nvidia driver repository
-  shell: |
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.1-1_all.deb && \
-    sudo dpkg -i cuda-keyring_1.1-1_all.deb
-  when: ansible_architecture == "x86_64" and gpu_provider == "nvidia"
-
-- name: Configure nvidia driver repository
-  shell: |
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/sbsa/cuda-keyring_1.1-1_all.deb && \
-    sudo dpkg -i cuda-keyring_1.1-1_all.deb
-  when: ansible_architecture == "aarch64" and gpu_provider == "nvidia"
-
-- name: Install nvidia-driver and cuda-driver
-  apt:
-    name: "{{ item }}"
-    state: present
-    update_cache: yes
-  with_items:
-    - cuda-drivers
-  when: gpu_provider == "nvidia"
-
-- name: Configure nvidia container toolkit repository
-  shell: |
-    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
-      && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-        sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-  when: gpu_provider == "nvidia"
-
-- name: Install nvidia-container-toolkit package
-  apt:
-    name: nvidia-container-toolkit
-    update_cache: yes
-  when: gpu_provider == "nvidia"

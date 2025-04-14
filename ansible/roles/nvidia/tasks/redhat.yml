@@ -1,0 +1,87 @@
+---
+- name: Configure nvidia driver repository
+  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
+  when: ansible_architecture == "x86_64"
+
+- name: Configure nvidia driver repository
+  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/sbsa/cuda-rhel9.repo
+  when: ansible_architecture == "aarch64"
+
+- name: Ensure CRB repository is enabled
+  command: dnf config-manager --set-enabled crb
+
+- name: Install epel-release
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - epel-release
+
+- name: Configure extra repository
+  command: dnf config-manager --enable baseos appstream extras
+
+- name: Install required kernel packages on RHEL/Rocky
+  dnf:
+    name:
+      - "kernel-devel-{{ ansible_kernel }}"
+      - "kernel-headers-{{ ansible_kernel }}"
+      - "kernel-modules-extra-{{ ansible_kernel }}"
+      - "elfutils-libelf-devel"
+    state: present
+
+- name: Install required dependencies for MLNX OFED on RHEL/Rocky
+  dnf:
+    name:
+      - createrepo
+      - gdb-headless
+      - patch
+      - autoconf
+      - rpm-build
+      - automake
+      - kernel-rpm-macros
+      - libtool
+      - tcl
+      - tk
+      - gcc-gfortran
+      - lsof
+      - pciutils
+      - python39
+      - perl-sigtrap
+    state: present
+
+- name: Install DNF plugins core
+  dnf:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_architecture == "aarch64"
+
+- name: Install opencl-filesystem
+  dnf:
+    name: opencl-filesystem
+    state: present
+  when: ansible_architecture == "aarch64"
+
+- name: Set NVIDIA Driver module version
+  command: dnf module enable -y nvidia-driver:{{ nvidia_version }}-dkms
+
+- name: Install NVIDIA Driver module
+  command: dnf module install -y nvidia-driver
+
+- name: Configure nvidia container toolkit repository
+  shell: |
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
+    sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
+
+- name: Install nvidia-container-toolkit package
+  yum:
+    name: nvidia-container-toolkit
+    state: present
+
+- name: Try to relocate the PCI devices for full GPU passthrough
+  command: >
+    grubby --update-kernel=ALL --args="pci=nocrs,realloc"
+
+- name: Run MLNX OFED installer on RHEL
+  command: "./mlnxofedinstall --add-kernel-support --kernel {{ ansible_kernel }} --without-fw-update --force"
+  args:
+    chdir: "/tmp/{{ mlnx_ofed_dir }}"

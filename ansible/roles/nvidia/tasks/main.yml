@@ -1,0 +1,44 @@
+---
+- name: Build distro string from OS facts
+  set_fact:
+    distro_string: >-
+      {%- if ansible_distribution | lower == 'ubuntu' -%}
+        ubuntu24.04-{{ ansible_architecture | trim | regex_replace('\n', '') }}
+      {%- elif ansible_os_family | lower == 'redhat' -%}
+        rhel9.5-{{ ansible_architecture | trim | regex_replace('\n', '') }}
+      {%- endif %}
+
+- name: Set Mellanox OFED download URL
+  set_fact:
+    mlnx_ofed_url: "https://content.mellanox.com/ofed/MLNX_OFED-24.10-2.1.8.0/MLNX_OFED_LINUX-24.10-2.1.8.0-{{ distro_string }}.tgz"
+
+- name: Debug - show computed URL
+  debug:
+    msg: "Downloading Mellanox OFED from {{ mlnx_ofed_url }}"
+
+- name: Download Mellanox OFED tarball
+  get_url:
+    url: "{{ mlnx_ofed_url }}"
+    dest: "/tmp/{{ mlnx_ofed_url | basename }}"
+    mode: '0644'
+  register: download_ofed
+
+- name: Extract Mellanox OFED tarball
+  unarchive:
+    src: "/tmp/{{ mlnx_ofed_url | basename }}"
+    dest: "/tmp/"
+    remote_src: yes
+  when: download_ofed is changed
+
+- name: Set extracted directory name
+  set_fact:
+    mlnx_ofed_dir: "{{ (mlnx_ofed_url | basename) | regex_replace('\\.tgz$', '') }}"
+
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Restart openibd
+  command: /etc/init.d/openibd restart

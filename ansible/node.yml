@@ -23,6 +23,9 @@
     - include_role:
         name: containerd
     - include_role:
+        name: nvidia
+      when: accel_provider == "nvidia"
+    - include_role:
         name: kubernetes
     - include_role:
         name: load_additional_components
