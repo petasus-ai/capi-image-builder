@@ -1,0 +1,27 @@
+---
+- name: Download rebellions driver
+  get_url:
+    url: https://axxcz8fkeabo.objectstorage.ap-singapore-2.oci.customer-oci.com/p/VK6gKFeO3Q2kOLKyL7O_auQLShi2XNFxqDFHTRUZfpOTc2qJbBWDN9hdfe0oDGD2/n/axxcz8fkeabo/b/rebellions/o/rebel_driver_external_release_16gbps_1.2.92_amd64.deb
+    dest: /tmp/rebellions/rebellions_driver.deb
+    mode: 0644
+
+- name: Install dkms
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - dkms
+
+- name: Ensure RNG seed file exists
+  ansible.builtin.shell: |
+    mkdir -p /var/lib/shim-signed/mok
+    openssl rand -out /var/lib/shim-signed/mok/.rnd 1024
+
+- name: Copy rebellions install service
+  copy:
+    src: etc/systemd/system/rbln-install-deb.service
+    dest: /etc/systemd/system/rbln-install.service
+    owner: root
+    group: root
+    mode: '0644'

@@ -1,0 +1,203 @@
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: 'Select os to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - ubuntu
+          - rocky
+          - almalinux
+      kube_version:
+        description: "kubernetes version"
+        type: string
+        required: true
+  push:
+    tags:
+      - v*.*.*
+jobs:
+  build-ubuntu-2404-rebellions-amd64:
+    if: ${{ github.event.inputs.os == 'ubuntu' || github.event.inputs.os == 'all' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"accel_provider\": \"\"/\"accel_provider\": \"rebellions\"/g" packer/config/common.json
+          sed -i "s/\"rebellions_version\": \"\"/\"rebellions_version\": \"${{ github.event.inputs.rebellions_version }}\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-ubuntu-2404
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64
+
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
+            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
+            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
+
+  build-almalinux-9-rebellions-amd64:
+    if: ${{ github.event.inputs.os == 'almalinux' || github.event.inputs.os == 'all' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"accel_provider\": \"\"/\"accel_provider\": \"rebellions\"/g" packer/config/common.json
+          sed -i "s/\"rebellions_version\": \"\"/\"rebellions_version\": \"${{ github.event.inputs.rebellions_version }}\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-almalinux-9
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/almalinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD almalinux-9-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 output/almalinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker push quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64
+
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
+            quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
+            quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest rm quay.io/edgestack/almalinux-9-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
+
+  build-rockylinux-9-rebellions-amd64:
+    if: ${{ github.event.inputs.os == 'rocky' || github.event.inputs.os == 'all' }}
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Activate virtualenv
+        run: |
+          . /home/rocky/.venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+
+      - name: Patch K8S Version
+        id: patch-version
+        run: |
+          if [ -z "$KUBE_VERSION" ]
+          then
+            KUBE_VERSION=$TAG_REF
+          fi
+          KUBE_PATCH_VERSION=${KUBE_VERSION#v}
+          KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
+
+          echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
+
+          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          sed -i "s/\"accel_provider\": \"\"/\"accel_provider\": \"rebellions\"/g" packer/config/common.json
+          sed -i "s/\"rebellions_version\": \"\"/\"rebellions_version\": \"${{ github.event.inputs.rebellions_version }}\"/g" packer/config/common.json
+        env:
+          KUBE_VERSION: ${{ inputs.kube_version }}
+          TAG_REF: ${{ github.ref_name }}
+
+      - name: Build image
+        run: make build-qemu-rockylinux-9-uefi
+
+      - name: Create Dockerfile
+        run: |
+          cat << EOF > output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          FROM alpine
+          ADD rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          EOF
+
+      - name: Build & push container image
+        run: |
+          sudo docker build --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
+          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64
+
+      - name: Create container image manifests
+        continue-on-error: true
+        run: |
+          sudo docker manifest create quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
+          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
+          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions

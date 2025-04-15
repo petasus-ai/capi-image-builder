@@ -1,0 +1,14 @@
+---
+- name: Download rebellions driver
+  get_url:
+    url: https://axxcz8fkeabo.objectstorage.ap-singapore-2.oci.customer-oci.com/p/nqfs-c9CeLGP3ZgLuXK7OXWZuR3LF92uhpusaPRsXOf2lGFiI7nDX5N_lhsSDmK-/n/axxcz8fkeabo/b/rebellions/o/rebel_driver_external_release_16gbps_1.2.92-2.x86_64.rpm
+    dest: /opt/rebellions/rebellions_driver.rpm
+    mode: 0644
+
+- name: Copy rebellions install service
+  copy:
+    src: etc/systemd/system/rbln-install-rpm.service
+    dest: /etc/systemd/system/rbln-install.service
+    owner: root
+    group: root
+    mode: '0644'

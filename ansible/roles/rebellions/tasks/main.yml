@@ -1,0 +1,24 @@
+---
+- name: Create a tmp directory
+  file:
+    path: "/tmp/rebellions"
+    state: directory
+    mode: 0755
+
+- name: Create rebellions directory
+  ansible.builtin.file:
+    path: /opt/rebellions
+    state: directory
+    mode: '0755'
+
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Enable and start rebellions install service
+  ansible.builtin.systemd:
+    name: rbln-install.service
+    enabled: no
+    state: started

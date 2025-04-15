@@ -45,6 +45,9 @@
     - include_role:
         name: customize
     - include_role:
+        name: rebellions
+      when: accel_provider == "rebellions"
+    - include_role:
         name: sysprep
 
   environment:
