@@ -1,7 +1,7 @@
 ---
 - name: Create a tmp directory
   file:
-    path: "/tmp/rebellions"
+    path: "/opt/rebellions"
     state: directory
     mode: 0755
 
