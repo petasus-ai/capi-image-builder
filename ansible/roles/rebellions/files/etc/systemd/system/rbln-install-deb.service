@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/apt install -y /opt/rebellions/rebellions_driver.deb --no-gpg-check
+ExecStart=/usr/bin/apt install -y /opt/rebellions/rebellions_driver.deb
 RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal

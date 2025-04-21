@@ -17,8 +17,8 @@
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
-- name: Enable and start rebellions install service
+- name: Ensure rebellions install service is enabled
   ansible.builtin.systemd:
     name: rbln-install.service
-    enabled: no
-    state: started
+    enabled: yes
+    state: stopped

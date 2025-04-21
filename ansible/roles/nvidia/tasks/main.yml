@@ -3,7 +3,7 @@
   set_fact:
     distro_string: >-
       {%- if ansible_distribution | lower == 'ubuntu' -%}
-        ubuntu24.04-{{ ansible_architecture | trim | regex_replace('\n', '') }}
+        ubuntu22.04-{{ ansible_architecture | trim | regex_replace('\n', '') }}
       {%- elif ansible_os_family | lower == 'redhat' -%}
         rhel9.5-{{ ansible_architecture | trim | regex_replace('\n', '') }}
       {%- endif %}

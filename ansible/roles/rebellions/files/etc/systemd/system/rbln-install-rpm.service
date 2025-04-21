@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/dnf install -y /opt/rebellions/rebellions_driver.rpm --nogpgcheck
+ExecStart=/usr/bin/dnf install -y /opt/rebellions/rebellions_driver.rpm
 RemainAfterExit=yes
 StandardOutput=journal
 StandardError=journal
