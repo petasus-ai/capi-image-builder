@@ -9,9 +9,9 @@
   "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9",
   "guest_os_type": "centos9-64",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-  "iso_checksum": "091884cffa59e6a1da5bf0352b393c0bcec3f87964cec650981cbfd8ac7496e5",
   "iso_checksum_type": "sha256",
-  "iso_url": "/home/rocky/rhel-images/alma-9-amd64-20250403.qcow2",
+  "iso_url": "/home/rocky/rhel-images/alma-9-amd64-20250516.qcow2",
+  "iso_checksum": "43655807054ac8d07b3325b20e3373a6899f8dfab6323dbe7ed1da3cde3c8026",
   "os_display_name": "AlmaLinux 9",
   "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
   "shutdown_command": "/sbin/halt -h -p"

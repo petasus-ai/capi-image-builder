@@ -1,4 +1,10 @@
 ---
+- name: Install libseccomp package
+  dnf:
+    name: libseccomp
+    state: present
+    lock_timeout: 60
+
 - name: Configure nvidia driver repository
   command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
   when: ansible_architecture == "x86_64"
@@ -10,16 +16,6 @@
 - name: Ensure CRB repository is enabled
   command: dnf config-manager --set-enabled crb
 
-- name: Install epel-release
-  dnf:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - epel-release
-
-- name: Configure extra repository
-  command: dnf config-manager --enable baseos appstream extras
-
 - name: Install required kernel packages on RHEL/Rocky
   dnf:
     name:
@@ -28,6 +24,13 @@
       - "kernel-modules-extra-{{ ansible_kernel }}"
       - "elfutils-libelf-devel"
     state: present
+
+- name: Install epel-release
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - epel-release
 
 - name: Install required dependencies for MLNX OFED on RHEL/Rocky
   dnf:
@@ -55,14 +58,30 @@
     state: present
   when: ansible_architecture == "aarch64"
 
+- name: Enable Powertools repository
+  command: dnf config-manager --set-enabled powertools
+  ignore_errors: yes
+  when: ansible_architecture == "aarch64"
+
 - name: Install opencl-filesystem
   dnf:
     name: opencl-filesystem
     state: present
   when: ansible_architecture == "aarch64"
 
+- name: Install required dependencies for NVIDIA Driver on RHEL/Rocky 9
+  dnf:
+    name:
+      - g++
+    state: present
+
+- name: Run MLNX OFED installer on RHEL
+  command: "./mlnxofedinstall --add-kernel-support --kernel {{ ansible_kernel }} --without-fw-update --force"
+  args:
+    chdir: "/tmp/{{ mlnx_ofed_dir }}"
+
 - name: Set NVIDIA Driver module version
-  command: dnf module enable -y nvidia-driver:{{ nvidia_version }}-dkms
+  command: dnf module enable -y nvidia-driver:{{ nvidia_version }}-open
 
 - name: Install NVIDIA Driver module
   command: dnf module install -y nvidia-driver
@@ -80,8 +99,3 @@
 - name: Try to relocate the PCI devices for full GPU passthrough
   command: >
     grubby --update-kernel=ALL --args="pci=nocrs,realloc"
-
-- name: Run MLNX OFED installer on RHEL
-  command: "./mlnxofedinstall --add-kernel-support --kernel {{ ansible_kernel }} --without-fw-update --force"
-  args:
-    chdir: "/tmp/{{ mlnx_ofed_dir }}"

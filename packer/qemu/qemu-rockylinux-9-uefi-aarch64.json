@@ -9,9 +9,9 @@
   "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9",
   "guest_os_type": "linux-64",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-  "iso_checksum": "d5e4511fa032c370f7be830ad59c60343c62e3f9cce57bfd3bf66db1114b79aa",
   "iso_checksum_type": "sha256",
-  "iso_url": "/home/rocky/rhel-images/rocky-9-arm64-20250403.qcow2",
+  "iso_url": "/home/rocky/rhel-images/rocky-9-arm64-20250516.qcow2",
+  "iso_checksum": "0d72f6bb7904416fd6b4fd36cf2e69d38d39f61a3074f40eb6ceb5e69cd61228",
   "os_display_name": "RockyLinux 9",
   "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
   "shutdown_command": "/sbin/halt -h -p"
