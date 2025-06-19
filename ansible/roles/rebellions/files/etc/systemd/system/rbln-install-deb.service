@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
+ExecStart=/usr/bin/apt update -y
 ExecStart=/usr/bin/apt install -y /opt/rebellions/rebellions_driver.deb
 RemainAfterExit=yes
 StandardOutput=journal
