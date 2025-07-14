@@ -1,12 +1,11 @@
 [Unit]
 Description=Rebellions Driver 설치
 After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c "/usr/bin/apt clean && /usr/bin/apt update -y"
-ExecStart=/bin/sh -c "/usr/bin/apt install -y libcmocka0 || true"
+ExecStartPre=/bin/bash -c "until ping -c1 archive.ubuntu.com; do sleep 1; done"
+ExecStart=/usr/bin/apt update -y
 ExecStart=/usr/bin/apt install -y /opt/rebellions/rebellions_driver.deb
 RemainAfterExit=yes
 StandardOutput=journal
