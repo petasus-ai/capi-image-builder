@@ -1,7 +1,7 @@
 ---
 - name: Download rebellions driver
   get_url:
-    url: https://axxcz8fkeabo.objectstorage.ap-singapore-2.oci.customer-oci.com/p/9SNTYbZrJQ7ryO8tHuCmtl3uof_KalwN1zj7bb0MqOF6KhdjCQytd0bpMehI8min/n/axxcz8fkeabo/b/rebellions/o/atom_external_release_16gbps_1.3.73-2.x86_64.rpm
+    url: https://axxcz8fkeabo.objectstorage.ap-singapore-2.oci.customer-oci.com/p/Leru06kp5KGp_QiPNkqhcdRjoDqyfYXBYQyJv7_g8KqJtg7FNOsDKu3ZkEEhfBNC/n/axxcz8fkeabo/b/rebellions/o/atom_external_release_16gbps_1.3.80-2.x86_64.rpm
     dest: /opt/rebellions/rebellions_driver.rpm
     mode: 0644
 
