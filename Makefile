@@ -55,7 +55,6 @@ deps: deps-qemu
 deps-qemu:
 	hack/ensure-ansible.sh
 	hack/ensure-packer.sh
-	hack/ensure-goss.sh
 
 ## --------------------------------------
 ## Container variables

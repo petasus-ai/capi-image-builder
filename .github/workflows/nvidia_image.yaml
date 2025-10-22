@@ -18,12 +18,12 @@ on:
       nvidia_version:
         description: 'Select NVIDIA driver version'
         required: false
-        default: '570'
+        default: '580'
         type: choice
         options:
-          - 550
-          - 560
           - 570
+          - 575
+          - 580
   push:
     tags:
       - v*.*.*
