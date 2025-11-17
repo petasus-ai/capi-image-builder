@@ -6,9 +6,9 @@
   "ssh_username": "ubuntu",
   "guest_os_type": "ubuntu-64",
   "machine_type": "virt",
-  "iso_checksum": "a83795b1ff39e13314e31001bf358081be6e7f7eb3ae93a72cc494ceef51462e",
   "iso_checksum_type": "sha256",
-  "iso_url": "https://cloud-images.ubuntu.com/releases/jammy/release-20250516/ubuntu-22.04-server-cloudimg-arm64.img",
+  "iso_url": "https://cloud-images.ubuntu.com/releases/jammy/release-20250725/ubuntu-22.04-server-cloudimg-arm64.img",
+  "iso_checksum": "ec998e2141a14a7c7d8c5ea1bdd11cc055b46d2add71c47cb7295d53755c065c",
   "os_display_name": "Ubuntu 22.04",
   "shutdown_command": "shutdown -P now"
 }
