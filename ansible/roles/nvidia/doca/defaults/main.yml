@@ -1,0 +1,10 @@
+doca_repo_id: "doca"
+doca_repo_name: "DOCA Online Repo"
+doca_base_prefix: "https://linux.mellanox.com/public/repo/doca"
+doca_ofed_package: "doca-ofed"
+doca_extra_package: "doca-extra"
+doca_kernel_support_tool: "/opt/mellanox/doca/tools/doca-kernel-support"
+
+_doca_key_tmp: "/tmp/GPG-KEY-Mellanox.pub"
+_trusted_key_path: "/etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub"
+_sources_list: "/etc/apt/sources.list.d/doca.list"

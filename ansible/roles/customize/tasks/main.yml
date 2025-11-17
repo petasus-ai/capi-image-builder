@@ -12,7 +12,7 @@
 
 - name: download nerdctl binary
   get_url:
-    url: https://github.com/containerd/nerdctl/releases/download/v0.22.2/nerdctl-0.22.2-linux-{{ distro_arch }}.tar.gz
+    url: https://github.com/containerd/nerdctl/releases/download/v2.1.6/nerdctl-2.1.6-linux-{{ distro_arch }}.tar.gz
     dest: /tmp/nerdctl.tar.gz
     validate_certs: no
     mode: '0500'

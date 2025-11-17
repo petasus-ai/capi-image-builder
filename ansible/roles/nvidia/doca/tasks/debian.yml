@@ -1,0 +1,53 @@
+- name: Install linux-modules-extra for the running kernel
+  apt:
+    name: "linux-modules-extra-{{ ansible_kernel }}"
+    state: present
+    update_cache: yes
+
+- name: Install DOCA dependencies
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - bzip2
+
+- name: Download GPG key from BASE_URL
+  get_url:
+    url: "{{ doca_base_url }}/GPG-KEY-Mellanox.pub"
+    dest: "{{ _doca_key_tmp }}"
+    mode: '0644'
+    force: yes
+  register: key_download
+
+- name: dearmor GPG key into /etc/apt/trusted.gpg.d (only when downloaded/changed)
+  shell: "curl {{ doca_base_url }}/GPG-KEY-Mellanox.pub | gpg --dearmor > {{ _trusted_key_path }}"
+  when: key_download.changed
+  args:
+    creates: "{{ _trusted_key_path }}"
+
+- name: Ensure trusted key exists (if file already present but download didn't run, noop)
+  stat:
+    path: "{{ _trusted_key_path }}"
+  register: trusted_key_stat
+
+- name: If trusted key missing but download didn't change, try dearmor (idempotency)
+  shell: "curl {{ doca_base_url }}/GPG-KEY-Mellanox.pub | gpg --dearmor > {{ _trusted_key_path }}"
+  when:
+    - not trusted_key_stat.stat.exists
+    - key_download is defined
+  ignore_errors: yes
+
+- name: Create apt source file for DOCA
+  copy:
+    dest: "{{ _sources_list }}"
+    content: "deb [signed-by={{ _trusted_key_path }}] {{ doca_base_url }} ./\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install DOCA OFED package
+  apt:
+    name: "{{ doca_ofed_package }}"
+    state: present
+    update_cache: yes

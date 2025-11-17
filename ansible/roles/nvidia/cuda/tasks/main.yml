@@ -1,0 +1,21 @@
+---
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- import_tasks: nccl-test.yml
+  when: nvidia_full_pack | bool
+
+- name: Ensure CUDA PATH/LD_LIBRARY_PATH exports are present
+  blockinfile:
+    path: /etc/profile
+    create: yes
+    insertafter: EOF
+    marker: "#### {mark} ANSIBLE MANAGED: CUDA ####"
+    backup: no
+    block: |
+      export PATH=/usr/local/cuda/bin:$PATH
+      export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  when: nvidia_full_pack | bool

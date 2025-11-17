@@ -24,6 +24,11 @@ on:
           - 570
           - 575
           - 580
+      nvidia_full_pack:
+        description: 'Install Nvidia full pack including CUDA NCCL test'
+        required: true
+        default: false
+        type: boolean
   push:
     tags:
       - v*.*.*
@@ -60,6 +65,19 @@ jobs:
           sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
           sed -i "s/\"accel_provider\": \"\"/\"accel_provider\": \"nvidia\"/g" packer/config/common.json
           sed -i "s/\"nvidia_version\": \"\"/\"nvidia_version\": \"${{ github.event.inputs.nvidia_version }}\"/g" packer/config/common.json
+          sed -i "s/\"nvidia_full_pack\": \"false\"/\"nvidia_full_pack\": \"${{ github.event.inputs.nvidia_full_pack }}\"/g" packer/config/common.json
+          
+          jq \
+            --arg nvidia_full_pack "${{ github.event.inputs.nvidia_full_pack }}" \
+            '.variables.disk_size = (
+               if ($nvidia_full_pack == "true") then
+                 "40960"
+               else
+                 "16384"
+               end
+             )' \
+            packer/qemu/packer.json > tmp.json
+          mv tmp.json packer/qemu/packer.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}

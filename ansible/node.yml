@@ -21,7 +21,10 @@
     - include_role:
         name: providers
     - include_role:
-        name: nvidia
+        name: nvidia/doca
+      when: accel_provider == "nvidia"
+    - include_role:
+        name: nvidia/cuda
       when: accel_provider == "nvidia"
     - include_role:
         name: containerd

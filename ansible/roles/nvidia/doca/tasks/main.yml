@@ -1,0 +1,60 @@
+---
+- import_tasks: debian-prep.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat-prep.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Build distro string from OS facts
+  set_fact:
+    distro_string: >-
+      {%- if ansible_distribution | lower == 'ubuntu' -%}
+        ubuntu{{ ansible_distribution_version | trim | regex_replace('\n', '') }}
+      {%- elif ansible_os_family | lower == 'redhat' -%}
+        rhel{{ ansible_distribution_version | trim | regex_replace('\n', '') }}
+      {%- else -%}
+        unsupported
+      {%- endif %}
+
+- name: Detect architecture string to use in repo path (allow override with doca_arch)
+  set_fact:
+    arch_detect_raw: "{{ (ansible_facts['architecture'] | default(ansible_architecture)) | lower() }}"
+
+- name: Map detected architecture to repo directory (or use override)
+  set_fact:
+    arch_repo: >-
+      {%- set a = arch_detect_raw | trim -%}
+      {%- if a in ['x86_64','amd64','i386','i686'] -%}
+      x86_64
+      {%- elif a in ['aarch64','arm64'] -%}
+      arm64-sbsa
+      {%- else -%}
+      unknown
+      {%- endif -%}
+
+- name: Fail if distro is unsupported
+  fail:
+    msg: "The OS {{ ansible_distribution }} {{ ansible_distribution_version }} is not supported."
+  when: distro_string == "unsupported"
+
+- name: Fail if arch is unsupported
+  fail:
+    msg: "The architecture {{ arch_repo }} is not supported."
+  when: arch_repo == "unknown"
+
+- name: Config base URL
+  set_fact:
+    doca_base_url: "{{ doca_base_prefix }}/{{ doca_version }}/{{ distro_string }}/{{ arch_repo }}/"
+
+- name: Show DOCA base URL
+  debug:
+    msg: "The DOCA base URL {{ doca_base_url }}"
+
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Restart openibd
+  command: /etc/init.d/openibd restart

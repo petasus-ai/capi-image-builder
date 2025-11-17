@@ -1,0 +1,102 @@
+- name: Ensure CRB repository is enabled
+  command: dnf config-manager --set-enabled crb
+  when: ansible_distribution_major_version == "9"
+
+- name: Install required kernel packages on RHEL/Rocky
+  dnf:
+    name:
+      - "kernel-devel-{{ ansible_kernel }}"
+      - "kernel-headers-{{ ansible_kernel }}"
+      - "kernel-modules-extra-{{ ansible_kernel }}"
+      - "elfutils-libelf-devel"
+    state: present
+
+- name: Install epel-release
+  dnf:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - epel-release
+
+- name: Install DNF plugins core
+  dnf:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_architecture == "aarch64"
+
+- name: Enable Powertools repository
+  command: dnf config-manager --set-enabled powertools
+  ignore_errors: yes
+  when: ansible_architecture == "aarch64"
+
+- name: Install opencl-filesystem
+  dnf:
+    name: opencl-filesystem
+    state: present
+  when: ansible_architecture == "aarch64"
+
+- name: Ensure DOCA YUM repository is present
+  yum_repository:
+    name: "{{ doca_repo_id }}"
+    description: "{{ doca_repo_name }}"
+    baseurl: "{{ doca_base_url }}/"
+    enabled: yes
+    gpgcheck: no
+
+- name: Clean DNF caches
+  dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+
+- name: Install DOCA extra package
+  dnf:
+    name: "{{ doca_extra_package }}"
+    state: present
+    update_cache: yes
+
+- name: Build DOCA kernel packages for the currently installed kernel
+  shell: "{{ doca_kernel_support_tool }}"
+
+- name: Find DOCA* directories directly under /tmp
+  find:
+    paths: /tmp
+    patterns: '^DOCA.*'
+    use_regex: true
+    file_type: directory
+    depth: 1
+  register: doca_dirs
+
+- name: Fail if no DOCA directory found
+  fail:
+    msg: "No /tmp/DOCA.* directory found on {{ inventory_hostname }}"
+  when: doca_dirs.matched == 0
+
+- name: Search for *.rpm files in each DOCA directory
+  find:
+    paths: "{{ item.path }}"
+    patterns: "*.rpm"
+    recurse: no
+  loop: "{{ doca_dirs.files }}"
+  register: rpm_search_results
+
+- name: Combine found rpm file entries into a single list
+  set_fact:
+    rpm_file_objs: "{{ rpm_search_results.results | map(attribute='files') | sum(start=[]) }}"
+
+- name: Fail if no rpm files found
+  fail:
+    msg: "No rpm files found in any /tmp/DOCA* directory on {{ inventory_hostname }}"
+  when: rpm_file_objs | length == 0
+
+- name: Install all found RPMs using dnf if RHEL-family and dnf available
+  dnf:
+    name: "{{ rpm_file_objs | map(attribute='path') | list }}"
+    state: present
+    disable_gpg_check: yes
+
+- name: Install DOCA OFED package
+  dnf:
+    name: "{{ doca_ofed_package }}"
+    state: present
+    update_cache: yes

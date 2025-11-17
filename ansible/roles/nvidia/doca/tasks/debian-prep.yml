@@ -1,0 +1,9 @@
+- name: Install archive/extraction tools
+  apt:
+    name:
+      - tar
+      - gzip
+      - bzip2
+      - unzip
+    state: present
+    update_cache: yes

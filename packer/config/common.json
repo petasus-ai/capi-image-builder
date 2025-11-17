@@ -6,6 +6,7 @@
   "extra_rpms": "",
   "accel_provider": "",
   "nvidia_version": "",
+  "nvidia_full_pack": "false",
   "http_proxy": "",
   "https_proxy": "",
   "no_proxy": "",
