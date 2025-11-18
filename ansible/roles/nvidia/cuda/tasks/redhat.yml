@@ -52,16 +52,6 @@
 - name: Install NVIDIA Driver module
   command: dnf module install -y nvidia-driver
 
-- name: Configure nvidia container toolkit repository
-  shell: |
-    curl -s -L https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo | \
-    sudo tee /etc/yum.repos.d/nvidia-container-toolkit.repo
-
-- name: Install nvidia-container-toolkit package
-  yum:
-    name: nvidia-container-toolkit
-    state: present
-
 - name: Try to relocate the PCI devices for full GPU passthrough
   command: >
     grubby --update-kernel=ALL --args="pci=nocrs,realloc"

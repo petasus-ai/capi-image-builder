@@ -54,22 +54,6 @@
     dest: /
     extra_opts:
       - --no-overwrite-dir
-  when: ansible_os_family != "Flatcar"
-
-- name: unpack containerd for Flatcar to /opt/bin
-  unarchive:
-    remote_src: True
-    src: /tmp/containerd.tar.gz
-    dest: /
-    extra_opts:
-      - --absolute-names
-      - --transform
-      - 's@usr@opt@'
-      - --transform
-      - 's@sbin@bin@'
-      - --transform
-      - 's@opt/local@opt@'
-  when: ansible_os_family == "Flatcar"
 
 # Remove /opt/cni directory, as we will install cni later
 - name: delete /opt/cni directory
@@ -87,13 +71,6 @@
   file:
     path: /etc/systemd/system/containerd.service.d
     state: directory
-
-- name: Create systemd unit drop-in file for containerd to run from /opt/bin
-  template:
-    dest: /etc/systemd/system/containerd.service.d/10-opt-bin-custom.conf
-    src: etc/systemd/system/containerd-flatcar.conf
-    mode: 0600
-  when: ansible_os_family == "Flatcar"
 
 - name: Create containerd memory pressure drop in file
   template:

@@ -4,14 +4,6 @@
     state: present
     update_cache: yes
 
-- name: Install DOCA dependencies
-  apt:
-    name: "{{ item }}"
-    state: present
-    update_cache: yes
-  with_items:
-    - bzip2
-
 - name: Download GPG key from BASE_URL
   get_url:
     url: "{{ doca_base_url }}/GPG-KEY-Mellanox.pub"

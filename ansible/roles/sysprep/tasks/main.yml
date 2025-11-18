@@ -15,17 +15,11 @@
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
-- import_tasks: flatcar.yml
-  when: ansible_os_family == "Flatcar"
-
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "Rocky"
-
-- import_tasks: photon.yml
-  when: ansible_os_family == "VMware Photon OS"
 
 - name: Remove containerd http proxy conf file if needed
   file:
@@ -43,7 +37,6 @@
   loop:
   - { path: /etc/machine-id, state: absent, mode: "{{ machine_id_mode }}" }
   - { path: /etc/machine-id, state: touch,  mode: "{{ machine_id_mode }}" }
-  when: ansible_os_family != "Flatcar"
 
 - name: Truncate hostname file
   file:
@@ -60,7 +53,6 @@
   hostname:
     name: localhost.local
   ignore_errors: true
-  when: ansible_os_family != "VMware Photon OS" and ansible_os_family != "Flatcar"
 
 - name: Reset hosts file
   copy:
@@ -151,28 +143,16 @@
   loop:
   - { path: /root/.ssh/authorized_keys }
   - { path: "/home/{{ ansible_env.SUDO_USER | default(ansible_user_id) }}/.ssh/authorized_keys" }
-  when: ansible_os_family != "Flatcar"
-
-- name: Remove SSH authorized users for Flatcar
-  file:
-    state: absent
-    path: "{{ item.path }}"
-  loop:
-  - { path: /root/.ssh/authorized_keys }
-  when: ansible_os_family == "Flatcar"
-
 
 - name: Truncate all remaining log files in /var/log
   shell:
     cmd: |
       find /var/log -type f -iname '*.log' | xargs truncate -s 0
-  when: ansible_os_family != "Flatcar"
 
 - name: Delete all logrotated log zips
   shell:
     cmd: |
       find /var/log -type f -name '*.gz' -exec rm {} +
-  when: ansible_os_family != "Flatcar"
 
 - name: Remove swapfile
   file:
@@ -201,17 +181,3 @@
   shell:
     cmd: |
       journalctl -m --vacuum-time=1s
-
-- name: Ensure ignition runs on next boot
-  file:
-    state: touch
-    path: /boot/flatcar/first_boot
-    owner: root
-    group: root
-  when: ansible_os_family == "Flatcar"
-
-- name: Remove any default Ignition files used by Packer
-  file:
-    state: absent
-    path: /usr/share/oem/config.ign
-  when: ansible_os_family == "Flatcar"
