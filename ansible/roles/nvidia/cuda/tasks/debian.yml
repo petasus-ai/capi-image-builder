@@ -47,6 +47,18 @@
     chosen_cuda: "{{ version_map[nvidia_version].cuda }}"
     chosen_libnccl: "{{ version_map[nvidia_version].libnccl2 }}"
 
+- name: Configure nvidia container toolkit repository
+  shell: |
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+      && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+        sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+        sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+- name: Install nvidia-container-toolkit package
+  apt:
+    name: nvidia-container-toolkit
+    update_cache: yes
+
 - name: Install CUDA Toolkit
   apt:
     name:

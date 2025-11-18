@@ -66,6 +66,11 @@
   when:
     - nvidia_full_pack | default(false) | bool
 
+- name: Install nvidia-container-toolkit package
+  yum:
+    name: nvidia-container-toolkit-{{ container_toolkit_version }}
+    state: present
+
 - name: Install CUDA Toolkit and related packages
   dnf:
     name:
@@ -73,7 +78,6 @@
       - libnccl-{{ chosen_libnccl }}
       - libnccl-devel-{{ chosen_libnccl }}
       - libpciaccess
-      - nvidia-container-toolkit-{{ container_toolkit_version }}
       - libnvidia-container1-{{ container_toolkit_version }}
       - git
       - libnvshmem3-cuda-{{ version_map[nvidia_version].cuda_major }}
