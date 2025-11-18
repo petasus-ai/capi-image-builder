@@ -21,9 +21,9 @@ on:
         default: '580'
         type: choice
         options:
-          - 570
-          - 575
-          - 580
+          - "570"
+          - "575"
+          - "580"
       nvidia_full_pack:
         description: 'Install Nvidia full pack including CUDA NCCL test'
         required: true
@@ -95,7 +95,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
@@ -165,7 +165,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
@@ -235,7 +235,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
@@ -309,7 +309,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
@@ -379,7 +379,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
@@ -449,7 +449,7 @@ jobs:
       - name: Set tag variable based on inputs
         id: set_tag
         run: |
-          tag=${{ env.tag }}
+          tag=${{ steps.patch-version.outputs.kube-version }}-nvidia-${{ github.event.inputs.nvidia_version }}
           if [ "${{ github.event.inputs.nvidia_full_pack }}" == "true" ]; then
             tag="${tag}-full"
           fi
