@@ -24,11 +24,6 @@
     state: present
   when: ansible_architecture == "aarch64"
 
-- name: Enable Powertools repository
-  command: dnf config-manager --set-enabled powertools
-  ignore_errors: yes
-  when: ansible_architecture == "aarch64"
-
 - name: Install opencl-filesystem
   dnf:
     name: opencl-filesystem
