@@ -19,7 +19,7 @@ on:
     tags:
       - v*.*.*
 jobs:
-  build-ubuntu-2204-rebellions-amd64:
+  build-ubuntu-2404-rebellions-amd64:
     if: ${{ github.event.inputs.os == 'ubuntu' || github.event.inputs.os == 'all' }}
     runs-on:
       - self-hosted
@@ -56,29 +56,29 @@ jobs:
           TAG_REF: ${{ github.ref_name }}
 
       - name: Build image
-        run: make build-qemu-ubuntu-2204
+        run: make build-qemu-ubuntu-2404
 
       - name: Create Dockerfile
         run: |
-          cat << EOF > output/ubuntu-2204-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          cat << EOF > output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
           FROM alpine
-          ADD ubuntu-2204-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          ADD ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
           EOF
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 output/ubuntu-2204-kube-${{ steps.patch-version.outputs.kube-version }}
+          sudo docker build --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64
+          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64
 
       - name: Create container image manifests
         continue-on-error: true
         run: |
-          sudo docker manifest create quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
-            quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
-            quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
-          sudo docker manifest rm quay.io/edgestack/ubuntu-2204-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
+          sudo docker manifest create quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
+            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
+            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
+          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
 
   build-almalinux-9-rebellions-amd64:
     if: ${{ github.event.inputs.os == 'almalinux' || github.event.inputs.os == 'all' }}

@@ -6,9 +6,9 @@
   "ssh_username": "ubuntu",
   "guest_os_type": "ubuntu-64",
   "machine_type": "virt",
-  "iso_checksum": "f53522875cb585aa6be8cf0b58572799fa450328aef27ea2b4b9e3169982327c",
+  "iso_checksum": "a40713938d74aaec811f74cb1fa8bfcb535d22e26b2a0ca1cc90ad9db898feb9",
   "iso_checksum_type": "sha256",
-  "iso_url": "https://cloud-images.ubuntu.com/releases/noble/release-20250403/ubuntu-24.04-server-cloudimg-arm64.img",
+  "iso_url": "https://cloud-images.ubuntu.com/releases/noble/release-20251213/ubuntu-24.04-server-cloudimg-arm64.img",
   "os_display_name": "Ubuntu 24.04",
   "shutdown_command": "shutdown -P now"
 }
