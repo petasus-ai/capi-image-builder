@@ -1,165 +1,42 @@
 ---
-- name: Install libseccomp package
+- name: Install base packages (minimal)
   dnf:
-    name: libseccomp
+    name:
+      - libseccomp
+      - curl
+      - ca-certificates
+      - pciutils
+      - grubby
     state: present
     lock_timeout: 60
 
-- name: Configure nvidia driver repository
-  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
-  when: ansible_architecture == "x86_64"
+- name: Disable nouveau (modprobe)
+  copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    mode: "0644"
+    content: |
+      blacklist nouveau
+      options nouveau modeset=0
 
-- name: Configure nvidia driver repository
-  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/sbsa/cuda-rhel9.repo
-  when: ansible_architecture == "aarch64"
+- name: Rebuild initramfs (dracut)
+  command: dracut -f
+  changed_when: true
 
-- name: Ensure CRB repository is enabled
-  command: dnf config-manager --set-enabled crb
-
-- name: Install epel-release
-  dnf:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - epel-release
-
-- name: Install DNF plugins core
-  dnf:
-    name: dnf-plugins-core
-    state: present
-  when: ansible_architecture == "aarch64"
-
-- name: Enable Powertools repository
-  command: dnf config-manager --set-enabled powertools
-  ignore_errors: yes
-  when: ansible_architecture == "aarch64"
-
-- name: Install opencl-filesystem
-  dnf:
-    name: opencl-filesystem
-    state: present
-  when: ansible_architecture == "aarch64"
-
-- name: Install required dependencies for NVIDIA Driver on RHEL 9 and 10
+- name: Install kernel build deps (best-effort for driver install)
   dnf:
     name:
-      - g++
+      - kernel-devel
+      - kernel-headers
+      - gcc
+      - gcc-c++
+      - make
+      - elfutils-libelf-devel
+      - dkms
+      - perl
     state: present
-
-- name: Set NVIDIA Driver module version
-  command: dnf module enable -y nvidia-driver:{{ nvidia_version }}-open
-
-- name: Install NVIDIA Driver module
-  command: dnf module install -y nvidia-driver
+    lock_timeout: 60
+  ignore_errors: yes
 
 - name: Try to relocate the PCI devices for full GPU passthrough
   command: >
     grubby --update-kernel=ALL --args="pci=nocrs,realloc"
-
-- name: Set chosen CUDA and nccl vars
-  set_fact:
-    chosen_cuda: "{{ version_map[nvidia_version].cuda }}"
-    chosen_libnccl: "{{ version_map[nvidia_version].libnccl2 }}"
-
-- name: Configure nvidia container toolkit repository
-  command: dnf config-manager --add-repo https://nvidia.github.io/libnvidia-container/stable/rpm/nvidia-container-toolkit.repo
-  when:
-    - nvidia_full_pack | default(false) | bool
-
-- name: Install nvidia-container-toolkit package
-  yum:
-    name: nvidia-container-toolkit-{{ container_toolkit_version }}
-    state: present
-
-- name: Install CUDA Toolkit and related packages
-  dnf:
-    name:
-      - cuda-toolkit-{{ chosen_cuda }}
-      - libnccl-{{ chosen_libnccl }}
-      - libnccl-devel-{{ chosen_libnccl }}
-      - libpciaccess
-      - libnvidia-container1-{{ container_toolkit_version }}
-      - git
-      - libnvshmem3-cuda-{{ version_map[nvidia_version].cuda_major }}
-      - libnvshmem3-devel-cuda-{{ version_map[nvidia_version].cuda_major }}
-      - libnvshmem3-static-cuda-{{ version_map[nvidia_version].cuda_major }}
-      - python3-pip
-      - rpm-build
-      - make
-    state: present
-  when: nvidia_full_pack | bool
-
-- name: Install NVSHMEM language bidings for Python
-  pip:
-    name: nvshmem4py-cu{{ version_map[nvidia_version].cuda_major }}
-    break_system_packages: true
-    state: present
-    executable: pip3
-  when: nvidia_full_pack | bool
-
-- name: Clone NVIDIA gdrcopy repository
-  ansible.builtin.git:
-    repo: https://github.com/NVIDIA/gdrcopy.git
-    dest: /tmp/gdrcopy
-    version: master
-  when:
-    - nvidia_full_pack | bool
-
-- name: Build gdrcopy rpm packages
-  ansible.builtin.shell:
-    cmd: CUDA=/usr/local/cuda ./build-rpm-packages.sh
-    chdir: /tmp/gdrcopy/packages
-  when:
-    - nvidia_full_pack | bool
-
-- name: Install gdrcopy rpm packages
-  ansible.builtin.dnf:
-    name: "/tmp/gdrcopy/packages/{{ item }}"
-    state: present
-    disable_gpg_check: yes
-  loop:
-    - "gdrcopy-kmod-{{ gdrcopy_version }}dkms.el9.noarch.rpm"
-    - "gdrcopy-{{ gdrcopy_version }}.el9.{{ ansible_architecture }}.rpm"
-    - "gdrcopy-devel-{{ gdrcopy_version }}.el9.noarch.rpm"
-  when:
-    - nvidia_full_pack | bool
-
-- name: Configure nvidia driver repository
-  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo
-  when: 
-    - ansible_architecture == "x86_64"
-    - nvidia_full_pack | default(false) | bool
-
-- name: Configure nvidia driver repository
-  command: dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/sbsa/cuda-rhel8.repo
-  when: 
-    - ansible_architecture == "aarch64"
-    - nvidia_full_pack | default(false) | bool
-
-- name: Ensure nvidia-hpc-benchmarks-openmpi is installed
-  dnf:
-    name: nvidia-hpc-benchmarks-openmpi
-    state: present
-    disable_gpg_check: yes
-  when: nvidia_full_pack | bool
-
-- name: Remove CUDA repo file after install
-  file:
-    path: /etc/yum.repos.d/cuda-rhel8.repo
-    state: absent
-  when: 
-    - nvidia_full_pack | bool
-
-- name: Enable NVIDIA persistenced service
-  systemd:
-    name: nvidia-persistenced
-    enabled: yes
-  when: nvidia_full_pack | bool
-  ignore_errors: yes
-
-- name: Create NVIDIA peermem module configuration
-  copy:
-    content: 'nvidia-peermem'
-    dest: /etc/modules-load.d/nvidia-peermem.conf
-    mode: '0644'
-  when: nvidia_full_pack | bool

@@ -21,12 +21,6 @@
     - include_role:
         name: providers
     - include_role:
-        name: nvidia/doca
-      when: accel_provider == "nvidia"
-    - include_role:
-        name: nvidia/cuda
-      when: accel_provider == "nvidia"
-    - include_role:
         name: containerd
     - include_role:
         name: kubernetes
@@ -47,6 +41,12 @@
         name: security
     - include_role:
         name: customize
+    - include_role:
+        name: nvidia/doca
+      when: accel_provider == "nvidia"
+    - include_role:
+        name: nvidia/cuda
+      when: accel_provider == "nvidia"
     - include_role:
         name: rebellions
       when: accel_provider == "rebellions"
