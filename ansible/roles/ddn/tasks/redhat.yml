@@ -1,0 +1,73 @@
+- name: Install lustre dependencies
+  yum:
+    name: "{{ item }}"
+    state: present
+    disable_gpg_check: yes
+  with_items:
+  - json-c-devel
+  - libyaml-devel
+  - git
+
+- name: Clone pre-built lustre repository
+  git:
+    repo: "{{ lustre_repo }}"
+    dest: /tmp/prebuilt-lustre
+    version: master
+
+- name: Find lustre dkms module rpm files in /tmp folder
+  find:
+    name: "/tmp/prebuilt-lustre/{{ ansible_os_family }}-{{ ansible_distribution_major_version }}/{{ ansible_architecture }}/"
+    patterns: "lustre-client-dkms-*.rpm"
+  register: dkms_rpm_files
+
+- name: Setting lustre dkms_rpm_list
+  set_fact:
+    dkms_rpm_list: "{{ dkms_rpm_files.files | map(attribute='path') | list}}"
+
+- name: Install lustre dkms rpm modules
+  yum:
+    name: "{{ dkms_rpm_list }}"
+    state: present
+    disable_gpg_check: yes
+
+- name: Find lustre client rpm files in /tmp folder
+  find:
+    name: "/tmp/prebuilt-lustre/{{ ansible_os_family }}-{{ ansible_distribution_major_version }}/{{ ansible_architecture }}/"
+    patterns: "lustre-client-*.rpm"
+    excludes:
+      - "lustre-client-dkms-*.rpm"
+      - "lustre-client-devel-*.rpm"
+  register: client_rpm_files
+
+- name: Setting lustre client_rpm_list
+  set_fact:
+    client_rpm_list: "{{ client_rpm_files.files | map(attribute='path') | list}}"
+
+- name: Install lustre client rpm modules
+  yum:
+    name: "{{ client_rpm_list }}"
+    state: present
+    disable_gpg_check: yes
+
+- name: Find lustre userspace rpm files in /tmp folder
+  find:
+    name: "/tmp/prebuilt-lustre/{{ ansible_os_family }}-{{ ansible_distribution_major_version }}/{{ ansible_architecture }}/"
+    patterns: "*.rpm"
+    excludes:
+      - "lustre-client-dkms-*.rpm"
+  register: rpm_files
+
+- name: Setting lustre userspace rpm_list
+  set_fact:
+    rpm_list: "{{ rpm_files.files | map(attribute='path') | list}}"
+
+- name: Install lustre userspace rpm modules
+  yum:
+    name: "{{ rpm_list }}"
+    state: present
+    disable_gpg_check: yes
+
+- name: Remove pre-built lustre directory
+  file:
+    path: /tmp/prebuilt-lustre
+    state: absent

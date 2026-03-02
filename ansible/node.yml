@@ -51,6 +51,12 @@
         name: rebellions
       when: accel_provider == "rebellions"
     - include_role:
+        name: ddn
+      when: accel_provider == "nvidia"
+    - include_role:
+        name: vast
+      when: accel_provider == "nvidia"
+    - include_role:
         name: sysprep
 
   environment:

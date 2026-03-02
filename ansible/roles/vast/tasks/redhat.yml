@@ -1,0 +1,40 @@
+- name: Install build dependencies on RHEL
+  dnf:
+    name:
+      - gcc
+      - make
+      - rpm-build
+      - "kernel-devel-{{ ansible_kernel }}"
+    state: present
+
+- name: Build VAST client RPMs
+  shell: |
+    ./build.sh bin
+  args:
+    chdir: "{{ vast_src_dir }}"
+
+- name: Find built RPMs
+  find:
+    paths: "{{ vast_src_dir }}/dist"
+    patterns: "*.rpm"
+  register: rpm_packages_found
+
+- name: Install built RPMs
+  dnf:
+    name: "{{ item.path }}"
+    state: present
+    disable_gpg_check: yes
+  loop: "{{ rpm_packages_found.files }}"
+
+- name: Rebuild module dependencies
+  command: depmod -a
+
+- name: Recreate initramfs (dracut)
+  command: dracut -f
+
+- name: Install NFS dependencies on RHEL
+  dnf:
+    name:
+      - nfs-utils
+      - rpcbind
+    state: present

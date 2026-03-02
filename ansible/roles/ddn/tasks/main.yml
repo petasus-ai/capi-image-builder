@@ -1,0 +1,31 @@
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Deploy systemd unit for loading Lustre after network
+  copy:
+    dest: /etc/systemd/system/lustre-load.service
+    content: |
+      [Unit]
+      Description=Load lustre kernel module after network is up
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/sbin/modprobe lustre
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start lustre-load
+  systemd:
+    name: "lustre-load"
+    enabled: yes
+    state: started

@@ -1,0 +1,40 @@
+- name: Install build dependencies on Ubuntu
+  apt:
+    update_cache: yes
+    name:
+      - gcc
+      - make
+      - dkms
+      - debhelper
+      - dh-dkms
+      - autotools-dev
+      - "linux-headers-{{ ansible_kernel }}"
+    state: present
+
+- name: Build VAST client Debian packages
+  shell: |
+    ./build.sh bin --dkms
+  args:
+    chdir: "{{ vast_src_dir }}"
+
+- name: Find built DEBs
+  find:
+    paths: "{{ vast_src_dir }}/dist"
+    patterns: "*.deb"
+  register: deb_packages_found
+
+- name: Install built DEBs
+  apt:
+    deb: "{{ item.path }}"
+  loop: "{{ deb_packages_found.files }}"
+
+- name: Rebuild module dependencies
+  command: depmod -a
+
+
+- name: Install NFS dependencies on Ubuntu
+  apt:
+    update_cache: yes
+    name:
+      - nfs-common
+    state: present

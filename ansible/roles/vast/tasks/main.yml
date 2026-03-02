@@ -1,0 +1,74 @@
+---
+- name: Ensure work directory exists
+  file:
+    path: "{{ vast_work_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: parse kernel major/minor
+  set_fact:
+    kernel_major: "{{ (ansible_kernel | regex_search('^\\d+') | default('0')) | int }}"
+    kernel_minor: "{{ (ansible_kernel | regex_search('^\\d+\\.(\\d+)', '\\1') | default(['0']))[0] | int }}"
+
+- name: Download and run the latest VAST download script
+  shell: |
+    curl -sSf {{ vast_nfs_url }} | bash -s
+  args:
+    chdir: "{{ vast_work_dir }}"
+
+- name: Find the downloaded tarball
+  find:
+    paths: "{{ vast_work_dir }}"
+    patterns: "vastnfs-*.tar.xz"
+    use_regex: false
+  register: vast_archive
+
+- name: Unpack VAST client archive
+  unarchive:
+    src: "{{ vast_archive.files[0].path }}"
+    dest: "{{ vast_work_dir }}"
+    remote_src: yes
+  when: vast_archive.matched > 0
+
+- name: Set VAST source directory fact
+  set_fact:
+    vast_src_dir: "{{ vast_archive.files[0].path | dirname }}/{{ vast_archive.files[0].path | basename | regex_replace('\\.tar\\.xz$', '') }}"
+
+- import_tasks: debian.yml
+  when:
+    - ansible_os_family == "Debian"
+    - (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+
+- import_tasks: redhat.yml
+  when:
+    - ansible_os_family == "RedHat"
+    - (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+
+- name: Deploy systemd unit for loading VAST NFS after network
+  copy:
+    dest: /etc/systemd/system/vastnfs-load.service
+    content: |
+      [Unit]
+      Description=Load vastnfs kernel module after network is up
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/sbin/modprobe sunrpc
+
+      [Install]
+      WantedBy=multi-user.target
+  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+
+- name: Enable and start vastnfs-load
+  systemd:
+    name: "vastnfs-load"
+    enabled: yes
+    state: started
+  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
