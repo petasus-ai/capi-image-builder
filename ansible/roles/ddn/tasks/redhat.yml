@@ -12,7 +12,7 @@
   git:
     repo: "{{ lustre_repo }}"
     dest: /tmp/prebuilt-lustre
-    version: master
+    version: main
 
 - name: Find lustre dkms module rpm files in /tmp folder
   find:
