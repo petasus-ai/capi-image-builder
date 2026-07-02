@@ -2,7 +2,7 @@
   git:
     repo: "{{ lustre_repo }}"
     dest: /tmp/prebuilt-lustre
-    version: master
+    version: main
 
 - name: Debug current kernel version
   debug:
