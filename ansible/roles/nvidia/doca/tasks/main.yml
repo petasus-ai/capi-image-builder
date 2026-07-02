@@ -11,7 +11,7 @@
       {%- if ansible_distribution | lower == 'ubuntu' -%}
         ubuntu{{ ansible_distribution_version | trim | regex_replace('\n', '') }}
       {%- elif ansible_os_family | lower == 'redhat' -%}
-        rhel9.6
+        rhel9
       {%- else -%}
         unsupported
       {%- endif %}
