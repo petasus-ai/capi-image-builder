@@ -143,11 +143,10 @@ ABSOLUTE_PACKER_VAR_FILES := $(foreach f,$(abspath $(PACKER_VAR_FILES)),-var-fil
 ## Platform and version combinations
 ## --------------------------------------
 ROCKYLINUX_VERSIONS     :=  rockylinux-9-uefi
-ALMALINUX_VERSIONS		:=	almalinux-9
 UBUNTU_VERSIONS			:=	ubuntu-2404
 
-QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-9-uefi qemu-almalinux-9
-QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-9-uefi-aarch64 qemu-almalinux-9-aarch64
+QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-9-uefi
+QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-9-uefi-aarch64
 
 ## --------------------------------------
 ## Dynamic build targets
@@ -190,8 +189,6 @@ build-qemu-ubuntu-2404: ## Builds Ubuntu 24.04 QEMU image
 build-qemu-ubuntu-2404-aarch64: ## Builds Ubuntu 24.04 arm QEMU image
 build-qemu-rockylinux-9-uefi: ## Builds Rocky 8 UEFI QEMU image
 build-qemu-rockylinux-9-uefi-aarch64: ## Builds Rocky 8 UEFI arm QEMU image
-build-qemu-almalinux-9: ## Builds AlmaLinux 8 QEMU image
-build-qemu-almalinux-9-aarch64: ## Builds AlmaLinux 8 arm QEMU image
 build-qemu-amd64-all: $(QEMU_AMD64_BUILD_TARGETS) ## Builds all amd64 Qemu images
 build-qemu-arm64-all: $(QEMU_ARM64_BUILD_TARGETS) ## Builds all arm64 Qemu images
 build-qemu-all: $(QEMU_AMD64_BUILD_TARGETS) $(QEMU_ARM64_BUILD_TARGETS) ## Builds all Qemu images
@@ -204,8 +201,6 @@ validate-qemu-ubuntu-2404: ## Validates Ubuntu 24.04 QEMU image packer config
 validate-qemu-ubuntu-2404-aarch64: ## Validates Ubuntu 24.04 QEMU image packer config
 validate-qemu-rockylinux-9-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
 validate-qemu-rockylinux-9-uefi-aarch64: ## Validates Rocky Linux 8 UEFI QEMU image packer config
-validate-qemu-almalinux-9: ## Validates Alma Linux 8 QEMU image packer config
-validate-qemu-almalinux-9-aarch64: ## Validates Alma Linux 8 QEMU image packer config
 validate-qemu-all: $(QEMU_AMD64_VALIDATE_TARGETS) $(QEMU_ARM64_VALIDATE_TARGETS) ## Validates all Qemu Packer config
 
 validate-all: validate-qemu-all
