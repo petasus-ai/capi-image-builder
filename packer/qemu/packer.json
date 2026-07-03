@@ -20,6 +20,7 @@
       "output_directory": "{{user `output_directory`}}",
       "qemu_binary": "{{user `qemu_binary`}}",
       "shutdown_command": "echo '{{user `ssh_password`}}' | sudo -S -E sh -c 'usermod -L {{user `ssh_username`}} && {{user `shutdown_command`}}'",
+      "ssh_handshake_attempts": 100,
       "ssh_password": "{{user `ssh_password`}}",
       "ssh_timeout": "2h",
       "ssh_username": "{{user `ssh_username`}}",
@@ -150,7 +151,9 @@
     },
     {
       "ansible_env_vars": [
-        "ANSIBLE_SSH_ARGS={{user `existing_ansible_ssh_args`}} -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4"
+        "ANSIBLE_SSH_ARGS={{user `existing_ansible_ssh_args`}} -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4",
+        "ANSIBLE_TIMEOUT=120",
+        "ANSIBLE_HOST_KEY_CHECKING=False"
       ],
       "extra_arguments": [
         "--extra-vars",

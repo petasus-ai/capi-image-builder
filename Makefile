@@ -156,13 +156,22 @@ QEMU_ARM64_BUILD_TARGETS	:= $(addprefix build-,$(QEMU_ARM64_BUILD_NAMES))
 QEMU_AMD64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_AMD64_BUILD_NAMES))
 QEMU_ARM64_VALIDATE_TARGETS	:= $(addprefix validate-,$(QEMU_ARM64_BUILD_NAMES))
 
+# Bound each packer build with a timeout so a stalled SNAT is killed at this bound and the
+# job fails fast for a manual re-run. Override via the PACKER_BUILD_TIMEOUT env (see CI workflows).
+PACKER_BUILD_TIMEOUT ?= 60m
+
+# Cap the host-side packer/plugin Go runtime (defaults to nproc): packer 1.15 plugins
+# busy-loop mid-build and burn tens of cores. Known issue: below ~16 the spinners starve
+# packer's ansible SSH proxy instead (connections accepted but never served -> sudo/sftp hangs).
+PACKER_GOMAXPROCS ?= 16
+
 .PHONY: $(QEMU_AMD64_BUILD_TARGETS)
 $(QEMU_AMD64_BUILD_TARGETS): deps-qemu
-	packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
 .PHONY: $(QEMU_ARM64_BUILD_TARGETS)
 $(QEMU_ARM64_BUILD_TARGETS): deps-qemu
-	packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
 
 .PHONY: $(QEMU_AMD64_VALIDATE_TARGETS)
 $(QEMU_AMD64_VALIDATE_TARGETS): deps-qemu
