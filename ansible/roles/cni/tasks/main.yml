@@ -1,11 +1,5 @@
 ---
   - block:
-    - include_tasks: el_ovs.yml
-      when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "8"
-
-    - include_tasks: deb_ovs.yml
-      when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "20.04"
-
     - include_tasks: el_ipvs.yml
       when: ansible_os_family == "RedHat"
 
@@ -19,12 +13,6 @@
       with_items:
       - { name: 'vxlan', kernel_module: 'vxlan' }
       - { name: 'geneve', kernel_module: 'geneve' }
-      - { name: 'gre', kernel_module: 'gre' }
-      - { name: 'vport_vxlan', kernel_module: 'vport_vxlan' }
-      - { name: 'vport_geneve', kernel_module: 'vport_geneve' }
-      - { name: 'vport_gre', kernel_module: 'vport_gre' }
-      - { name: 'vport_stt', kernel_module: 'vport_stt' }
-      - { name: 'openvswitch', kernel_module: 'openvswitch' }
 
     - name: Enable ipvs modules
       template:

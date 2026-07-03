@@ -12,11 +12,10 @@
 # build hangs indefinitely instead of failing. That is not a theory; it is what
 # this role used to do.
 #
-# Every kmod build in this playbook (cni's OVS datapath DKMS, DOCA/OFED, NVIDIA,
-# DDN lustre, VAST) targets the RUNNING kernel, and several roles install headers
-# pinned to `ansible_kernel`. sysprep asserts the same invariant, but only at the
-# very end — this one fails the build before a single module is built against a
-# kernel the image will not boot.
+# Every kmod build in this playbook (DOCA/OFED, NVIDIA, VAST) targets the RUNNING
+# kernel, and several roles install headers pinned to `ansible_kernel`. sysprep
+# asserts the same invariant, but only at the very end — this one fails the build
+# before a single module is built against a kernel the image will not boot.
 #
 # Immutable/atomic families (Flatcar, Photon) fall through both imports and end
 # up with an empty result, which is treated as nothing to check.

@@ -18,12 +18,12 @@
   tasks:
     - include_role:
         name: node
-    # Must precede every role that builds a kernel module (cni's OVS datapath
-    # DKMS, doca, cuda, ddn, vast) or installs headers pinned to ansible_kernel:
-    # it asserts the guest is already running the newest kernel, so those
-    # modules are built against the kernel the image will actually boot. The
-    # upgrade and reboot that make that true happen before this playbook, in
-    # packer's scripts/upgrade-kernel.sh provisioner.
+    # Must precede every role that builds a kernel module (doca, cuda, vast) or
+    # installs headers pinned to ansible_kernel: it asserts the guest is already
+    # running the newest kernel, so those modules are built against the kernel
+    # the image will actually boot. The upgrade and reboot that make that true
+    # happen before this playbook, in packer's scripts/upgrade-kernel.sh
+    # provisioner.
     - include_role:
         name: kernel
     - include_role:
@@ -60,12 +60,6 @@
       when: accel_provider == "nvidia"
     - include_role:
         name: nvidia/cuda
-      when: accel_provider == "nvidia"
-    - include_role:
-        name: rebellions
-      when: accel_provider == "rebellions"
-    - include_role:
-        name: ddn
       when: accel_provider == "nvidia"
     - include_role:
         name: vast

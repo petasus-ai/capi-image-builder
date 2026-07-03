@@ -10,9 +10,9 @@
 #
 # The unload half has already run by then, so the node is left with mlx5_core
 # gone and its Mellanox VFs bound to no driver at all -- the netdev simply
-# disappears, taking SR-IOV, RDMA and any LNet mount with it. Whether the race
-# is lost depends on when sunrpc happens to be pinned, so it hits some nodes of
-# a cluster and not others.
+# disappears, taking SR-IOV, RDMA and any NFS-over-RDMA mount with it. Whether
+# the race is lost depends on when sunrpc happens to be pinned, so it hits some
+# nodes of a cluster and not others.
 #
 # Put the stack back for any Mellanox device that ended up driverless, and judge
 # the result by the netdev rather than by the driver binding, since the netdev is

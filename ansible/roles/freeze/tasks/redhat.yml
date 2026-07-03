@@ -7,7 +7,7 @@
 #
 # Everything here is CLI, not the dnf module — EL8's dnf module needs
 # platform-python bindings the build interpreter lacks (see
-# roles/kernel/tasks/el.yml).
+# roles/kernel/tasks/redhat.yml).
 
 - name: Add the freeze exclude list to dnf.conf
   lineinfile:

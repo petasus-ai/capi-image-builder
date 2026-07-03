@@ -10,9 +10,9 @@ Documentation=file:/usr/local/sbin/mlx-modules-ensure.sh
 # sysinit.target, Before=network.target remote-fs-pre.target). This unit keeps
 # default dependencies and so starts after basic.target -- late enough that an
 # fstab or .mount unit ordered on remote-fs.target would already have failed.
-# That suits KaaS, whose Lustre mount runs from PostKubeadmCommands after
-# kubelet; a node mounting a fabric filesystem from fstab would need this
-# ordered as early as openibd instead.
+# That suits KaaS, whose VAST NFS shares are mounted by workloads after kubelet;
+# a node mounting an NFS-over-RDMA share from fstab would need this ordered as
+# early as openibd instead.
 After=openibd.service
 Before=kubelet.service
 

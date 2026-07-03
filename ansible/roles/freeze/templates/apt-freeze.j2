@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 #
 # In-place upgrade freeze for the accelerator golden image. Every name below
-# is a kernel module (DOCA/OFED, Lustre, VAST NFS), a package version-locked
+# is a kernel module (DOCA/OFED, VAST NFS), a package version-locked
 # to that set, or the toolchain future DKMS rebuilds depend on. Pin-Priority
 # -1 removes their install candidate: apt will neither upgrade them nor pull
 # in the next kernel ABI's packages. The installed versions keep working

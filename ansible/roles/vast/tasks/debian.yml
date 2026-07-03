@@ -1,6 +1,7 @@
-# linux-headers-generic matches the running kernel: nvidia/doca (always ordered before
-# this role) installed linux-generic and rebooted into it. The dkms kernel hook rebuilds
-# the module on node-side kernel upgrades — no version-pinned packages.
+# linux-headers-generic matches the running kernel: the build rebooted into the newest
+# kernel before the playbook started, and every Ubuntu image installs the generic
+# metapackages (roles/node defaults). The dkms kernel hook rebuilds the module on
+# node-side kernel upgrades — no version-pinned packages.
 - name: Install build dependencies on Ubuntu
   apt:
     update_cache: yes

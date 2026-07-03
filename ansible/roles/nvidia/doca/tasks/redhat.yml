@@ -20,8 +20,9 @@
 # rather than the exception.
 #
 # The guest has already rebooted into the newest kernel by the time this runs
-# (scripts/upgrade-kernel.sh, before the playbook), so the running kernel is the newest and the pins below match it. That is
-# also what keeps OFA, lustre and vastnfs on one kernel.
+# (scripts/upgrade-kernel.sh, before the playbook), so the running kernel is the
+# newest and the pins below match it. That is also what keeps OFA and vastnfs on
+# one kernel.
 # kernel-devel-matched satisfies dkms' rich dependency
 # "(kernel-devel-matched if kernel-core)" (https://src.fedoraproject.org/rpms/dkms).
 - name: Install DKMS OFED build prerequisites (match the running kernel)

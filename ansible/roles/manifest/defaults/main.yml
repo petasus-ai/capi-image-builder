@@ -26,11 +26,6 @@ golden_component_map:
   - name: QEMU Guest Agent
     pkgs: [qemu-guest-agent]
 
-  # deb: openvswitch-switch / rpm: openvswitch
-  - name: Open vSwitch
-    match: prefix
-    pkgs: [openvswitch-switch, openvswitch]
-
   - name: DOCA OFED
     pkgs: [doca-ofed]
 
@@ -56,10 +51,6 @@ golden_component_map:
 
   - name: NVIDIA Container Toolkit
     pkgs: [nvidia-container-toolkit]
-
-  # deb: lustre-client-utils / rpm: lustre-client
-  - name: DDN Lustre Client
-    pkgs: [lustre-client-utils, lustre-client]
 
   # Built from the upstream tarball at image build time; only present on
   # kernels <= 6.8 (newer kernels ship a native client)

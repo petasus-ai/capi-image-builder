@@ -7,10 +7,9 @@
 # do by accident what only a rebuild is supported to do on purpose.
 #
 # Everything DOCA installs (mlnx-ofa_kernel, mlnx-ofed-kernel-dkms, the
-# nfsrdma/nvme DKMS modules), the prebuilt Lustre client and the
-# source-compiled VAST NFS client are kernel modules built against the exact
-# kernel the image boots; the build removes every other kernel, so there is no
-# fallback boot entry if an upgrade breaks the set.
+# nfsrdma/nvme DKMS modules) and the source-compiled VAST NFS client are kernel
+# modules built against the exact kernel the image boots; the build removes every
+# other kernel, so there is no fallback boot entry if an upgrade breaks the set.
 #
 # NVIDIA driver / CUDA packages are deliberately NOT on these lists: unlike
 # edgestack-image-builder, this builder's nvidia/cuda role only preps the
@@ -33,9 +32,9 @@ freeze_verify: true
 # resolver-driven removal, and gives operators `apt-mark showhold`
 # visibility), and the dry-run guard.
 #
-# The plain-named linux-image / linux-image-generic equivs dummies the ddn
-# role installs match linux-image* — replacing one with the real metapackage
-# is what would chain kernel upgrades into every later `apt upgrade`.
+# Every Ubuntu image installs the linux-image-generic and linux-headers-generic
+# metapackages (roles/node defaults), which linux-image*/linux-headers* freeze:
+# unpinned, they would chain the next kernel ABI into every later `apt upgrade`.
 #
 # Toolchain: `gcc` (metapackage) rather than gcc*, which would also pin
 # gcc-N-base and hold back libgcc-s1/libstdc++6 security updates.
@@ -58,7 +57,6 @@ freeze_apt_globs:
   - perftest
   - ucx*
   # storage clients
-  - lustre*
   - vastnfs*
   # toolchain future DKMS rebuilds depend on
   - dkms
@@ -80,7 +78,6 @@ freeze_dnf_globs:
   - infiniband-diags
   - perftest
   - ucx*
-  - lustre*
   - vastnfs*
   - dkms
   - gcc*

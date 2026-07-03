@@ -3,8 +3,8 @@ description: >-
   Generate and publish the SBOM, vulnerability report and signed SLSA
   provenance for a container-disk image that has already been pushed.
 
-# Ten build jobs across main/doca_image/rebellions need the identical three
-# stages, so they live here rather than being copy-pasted thirty times.
+# Eight build jobs across main and doca_image need the identical three stages, so
+# they live here rather than being copy-pasted twenty-four times.
 inputs:
   build-dir:
     description: >-
