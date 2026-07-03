@@ -90,7 +90,7 @@ jobs:
           sudo docker manifest create quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
             quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
             quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
           sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
 
   build-rockylinux-9-rebellions-amd64:
@@ -165,5 +165,5 @@ jobs:
           sudo docker manifest create quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions \
           quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-aarch64 \
           quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions --format v2s2
+          sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
           sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-rebellions
