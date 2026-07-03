@@ -1,0 +1,15 @@
+[Unit]
+Description=Normalize /usr/src/ofa_kernel symlinks for GPU operator driver containers
+# The dkms POST_BUILD hook of mlnx-ofed-kernel-dkms restores absolute
+# symlinks on every module rebuild; normalize them to relative ones before
+# kubelet starts so the NVIDIA driver container can always resolve them.
+Before=kubelet.service
+ConditionPathIsDirectory=/usr/src/ofa_kernel
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ofa-kernel-normalize.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

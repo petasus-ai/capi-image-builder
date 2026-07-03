@@ -58,3 +58,32 @@
 
 - name: Restart openibd
   command: /etc/init.d/openibd restart
+
+# DOCA-OFED >= 3.4 leaves absolute symlinks under /usr/src/ofa_kernel that
+# dangle inside the GPU operator driver container (useHostMofed) and break
+# the nvidia-peermem build. Normalize them to relative links on every boot;
+# see files/ofa-kernel-normalize.sh for details.
+- name: Install ofa_kernel symlink normalization script
+  copy:
+    src: ofa-kernel-normalize.sh
+    dest: /usr/local/sbin/ofa-kernel-normalize.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install ofa-kernel-normalize systemd unit
+  copy:
+    src: ofa-kernel-normalize.service
+    dest: /etc/systemd/system/ofa-kernel-normalize.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable ofa-kernel-normalize unit
+  systemd:
+    name: ofa-kernel-normalize
+    enabled: yes
+    daemon_reload: yes
+
+- name: Normalize ofa_kernel symlinks at image build time
+  command: /usr/local/sbin/ofa-kernel-normalize.sh
