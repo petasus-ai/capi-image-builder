@@ -46,8 +46,22 @@ jobs:
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
           echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
-          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
-          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
+          KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
+            | grep -m1 -oE "^Version: ${KUBE_PATCH_VERSION}-[0-9.]+" | cut -d' ' -f2)
+          KUBE_DEB_VERSION=${KUBE_DEB_VERSION:-${KUBE_PATCH_VERSION}-1.1}
+
+          # Patch version fields explicitly so this step does not depend on the
+          # baseline version committed in kubernetes.json
+          sed -i \
+            -e "s|\"kubernetes_deb_version\": \"[^\"]*\"|\"kubernetes_deb_version\": \"${KUBE_DEB_VERSION}\"|" \
+            -e "s|\"kubernetes_rpm_version\": \"[^\"]*\"|\"kubernetes_rpm_version\": \"${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_semver\": \"[^\"]*\"|\"kubernetes_semver\": \"v${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_series\": \"[^\"]*\"|\"kubernetes_series\": \"v${KUBE_MINOR_VERSION}\"|" \
+            -e "s|\"crictl_version\": \"[^\"]*\"|\"crictl_version\": \"${KUBE_MINOR_VERSION}.0\"|" \
+            packer/config/kubernetes.json
+
+          cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
@@ -105,8 +119,22 @@ jobs:
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
           echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
-          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
-          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
+          KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
+            | grep -m1 -oE "^Version: ${KUBE_PATCH_VERSION}-[0-9.]+" | cut -d' ' -f2)
+          KUBE_DEB_VERSION=${KUBE_DEB_VERSION:-${KUBE_PATCH_VERSION}-1.1}
+
+          # Patch version fields explicitly so this step does not depend on the
+          # baseline version committed in kubernetes.json
+          sed -i \
+            -e "s|\"kubernetes_deb_version\": \"[^\"]*\"|\"kubernetes_deb_version\": \"${KUBE_DEB_VERSION}\"|" \
+            -e "s|\"kubernetes_rpm_version\": \"[^\"]*\"|\"kubernetes_rpm_version\": \"${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_semver\": \"[^\"]*\"|\"kubernetes_semver\": \"v${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_series\": \"[^\"]*\"|\"kubernetes_series\": \"v${KUBE_MINOR_VERSION}\"|" \
+            -e "s|\"crictl_version\": \"[^\"]*\"|\"crictl_version\": \"${KUBE_MINOR_VERSION}.0\"|" \
+            packer/config/kubernetes.json
+
+          cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
@@ -168,8 +196,22 @@ jobs:
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
           echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
-          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
-          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
+          KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
+            | grep -m1 -oE "^Version: ${KUBE_PATCH_VERSION}-[0-9.]+" | cut -d' ' -f2)
+          KUBE_DEB_VERSION=${KUBE_DEB_VERSION:-${KUBE_PATCH_VERSION}-1.1}
+
+          # Patch version fields explicitly so this step does not depend on the
+          # baseline version committed in kubernetes.json
+          sed -i \
+            -e "s|\"kubernetes_deb_version\": \"[^\"]*\"|\"kubernetes_deb_version\": \"${KUBE_DEB_VERSION}\"|" \
+            -e "s|\"kubernetes_rpm_version\": \"[^\"]*\"|\"kubernetes_rpm_version\": \"${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_semver\": \"[^\"]*\"|\"kubernetes_semver\": \"v${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_series\": \"[^\"]*\"|\"kubernetes_series\": \"v${KUBE_MINOR_VERSION}\"|" \
+            -e "s|\"crictl_version\": \"[^\"]*\"|\"crictl_version\": \"${KUBE_MINOR_VERSION}.0\"|" \
+            packer/config/kubernetes.json
+
+          cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
@@ -227,8 +269,22 @@ jobs:
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
           echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
           
-          sed -i "s/1.27.5/$KUBE_PATCH_VERSION/g" packer/config/kubernetes.json
-          sed -i "s/1.27/$KUBE_MINOR_VERSION/g" packer/config/kubernetes.json
+          # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
+          KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
+            | grep -m1 -oE "^Version: ${KUBE_PATCH_VERSION}-[0-9.]+" | cut -d' ' -f2)
+          KUBE_DEB_VERSION=${KUBE_DEB_VERSION:-${KUBE_PATCH_VERSION}-1.1}
+
+          # Patch version fields explicitly so this step does not depend on the
+          # baseline version committed in kubernetes.json
+          sed -i \
+            -e "s|\"kubernetes_deb_version\": \"[^\"]*\"|\"kubernetes_deb_version\": \"${KUBE_DEB_VERSION}\"|" \
+            -e "s|\"kubernetes_rpm_version\": \"[^\"]*\"|\"kubernetes_rpm_version\": \"${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_semver\": \"[^\"]*\"|\"kubernetes_semver\": \"v${KUBE_PATCH_VERSION}\"|" \
+            -e "s|\"kubernetes_series\": \"[^\"]*\"|\"kubernetes_series\": \"v${KUBE_MINOR_VERSION}\"|" \
+            -e "s|\"crictl_version\": \"[^\"]*\"|\"crictl_version\": \"${KUBE_MINOR_VERSION}.0\"|" \
+            packer/config/kubernetes.json
+
+          cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
