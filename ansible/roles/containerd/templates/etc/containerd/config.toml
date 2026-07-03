@@ -45,13 +45,9 @@ imports = ["/etc/containerd/conf.d/*.toml"]
   [plugins."io.containerd.grpc.v1.cri"]
     sandbox_image = "{{ sandbox_pause_image }}"
   [plugins."io.containerd.grpc.v1.cri".registry]
-      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-          endpoint = ["https://registry-1.docker.io"]
-        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."edgestack.harbor.core:32443"]
-          endpoint = ["https://edgestack.harbor.core:32443"]
-        [plugins."io.containerd.grpc.v1.cri".registry.configs."edgestack.harbor.core:32443".tls]
-          insecure_skip_verify = true
+      # Registry mirrors/credentials are configured at runtime via config_path
+      # (/etc/containerd/certs.d/<host>/hosts.toml). Keep inline `mirrors` empty:
+      # containerd CRI rejects `mirrors` when `config_path` is set (mutually exclusive).
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
     runtime_type = "io.containerd.runc.v2"
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]

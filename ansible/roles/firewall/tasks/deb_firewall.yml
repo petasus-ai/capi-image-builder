@@ -76,85 +76,16 @@
     port: '30000:32767'
     proto: tcp
 
-- name: permit (antrea) vxlan port 4789/udp
+- name: permit cilium vxlan port 8471/udp
   community.general.ufw:
     rule: allow
-    port: '4789'
-    proto: udp
-
-- name: permit (antrea) geneve port 6081/udp
-  community.general.ufw:
-    rule: allow
-    port: '6081'
-    proto: udp
-
-- name: permit (antrea) gre
-  community.general.ufw:
-    rule: allow
-    proto: gre
-
-- name: permit (antrea) IPSEC ESP
-  community.general.ufw:
-    rule: allow
-    proto: esp
-
-- name: permit (antrea) IPSEC AH
-  community.general.ufw:
-    rule: allow
-    proto: ah
-
-- name: permit (antrea) IPSEC port 500/udp
-  community.general.ufw:
-    rule: allow
-    port: '500'
-    proto: udp
-
-- name: permit (antrea) IPSEC port 4500/udp
-  community.general.ufw:
-    rule: allow
-    port: '4500'
-    proto: udp
-
-- name: permit (antrea) stt port 7471/tcp
-  community.general.ufw:
-    rule: allow
-    port: '7471'
-    proto: tcp
-
-- name: permit antrea ingress port 10349/tcp
-  community.general.ufw:
-    rule: allow
-    port: '10349'
-    proto: tcp
-
-- name: permit antrea controller 10350/tcp
-  community.general.ufw:
-    rule: allow
-    port: '10350'
-    proto: tcp
-
-- name: permit cilium vxlan port 8472/udp
-  community.general.ufw:
-    rule: allow
-    port: '8472'
+    port: '8471'
     proto: udp
 
 - name: permit cilium healthcheck port 4240/tcp
   community.general.ufw:
     rule: allow
     port: '4240'
-    proto: tcp
-
-- name: permit calico BGP port 179/tcp
-  community.general.ufw:
-    rule: allow
-    port: '179'
-    proto: tcp
-
-- name: permit calico Typha port 5473/tcp
-  community.general.ufw:
-    rule: allow
-    port: '5473'
     proto: tcp
 
 - name: permit prometheus metrics port 9100/tcp

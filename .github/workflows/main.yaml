@@ -49,6 +49,10 @@ on:
   push:
     tags:
       - v*.*.*
+# Per-attempt packer build timeout (healthy QEMU builds run ~20 min). A stalled SNAT is
+# killed at this bound so the job fails fast for a manual re-run.
+env:
+  PACKER_BUILD_TIMEOUT: "40m"
 # id-token: write mints the OIDC token cosign exchanges with Fulcio for a
 # keyless signing certificate. Declaring permissions replaces the default token
 # scopes for every job in the file; contents: read is all these jobs need from
@@ -63,6 +67,7 @@ jobs:
       - self-hosted
       - linux
       - x64
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -149,25 +154,25 @@ jobs:
             --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-amd64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
           image: quay.io/edgestack/ubuntu-2404-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
           build-dir: output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           image-repo: ubuntu-2404-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}-amd64
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
           quay-password: ${{ secrets.QUAY_PASSWORD }}
@@ -184,6 +189,7 @@ jobs:
       - self-hosted
       - linux
       - x64
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -270,25 +276,25 @@ jobs:
             --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-amd64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
+          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
           image: quay.io/edgestack/rocky-9-uefi-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
           build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           image-repo: rocky-9-uefi-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}-amd64
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
           quay-password: ${{ secrets.QUAY_PASSWORD }}
@@ -305,6 +311,7 @@ jobs:
       - self-hosted
       - linux
       - arm64
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -395,25 +402,25 @@ jobs:
             --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
+          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
           image: quay.io/edgestack/ubuntu-2404-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
           build-dir: output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           image-repo: ubuntu-2404-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}-aarch64
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
           quay-password: ${{ secrets.QUAY_PASSWORD }}
@@ -430,6 +437,7 @@ jobs:
       - self-hosted
       - linux
       - arm64
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -516,25 +524,25 @@ jobs:
             --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
+          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
           image: quay.io/edgestack/rocky-9-uefi-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
           build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           image-repo: rocky-9-uefi-kube
-          tag: ${{ steps.patch-version.outputs.kube-version }}-aarch64
+          tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
           quay-password: ${{ secrets.QUAY_PASSWORD }}

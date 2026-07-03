@@ -56,7 +56,8 @@
   command: /usr/bin/yum -y clean all
 
 - name: Reset network interface IDs
-  shell: sed -i '/^\(HWADDR\|UUID\)=/d' /etc/sysconfig/network-scripts/ifcfg-*
+  shell: sed -i '/^\(HWADDR\|UUID\)=/d' /etc/sysconfig/network-scripts/ifcfg-* 2>/dev/null || true
+  changed_when: true
 
 # cloud-init's NetworkManager renderer wrote a cloud-init-<iface>.nmconnection keyfile
 # during the build (DHCP fallback over the QEMU NIC), pinning the build VM's MAC. Drop it;

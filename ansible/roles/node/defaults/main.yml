@@ -82,8 +82,10 @@ common_photon_rpms:
 common_virt_rpms:
 - curl
 
+# No linux-cloud-tools-virtual (Hyper-V guest daemons): x86-only, unused on
+# KVM/kubevirt guests. Keep this a plain list — it is read via lookup('vars', ...)
+# in node/meta, where a templated string fails to resolve.
 common_virt_debs:
-- linux-cloud-tools-virtual
 - linux-tools-virtual
 - open-vm-tools
 

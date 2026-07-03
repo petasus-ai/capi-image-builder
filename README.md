@@ -17,16 +17,17 @@ unused: this fork builds the QEMU targets only.
 | `quay.io/edgestack/ubuntu-2404-kube` | Ubuntu 24.04 | `amd64`, `aarch64` |
 | `quay.io/edgestack/rocky-9-uefi-kube` | Rocky Linux 9 (UEFI) | `amd64`, `aarch64` |
 
-**Tag grammar:** `v<major>.<minor>.<patch>[-<accelerator>]-<arch>`, where the
-version is the Kubernetes version the image ships and the accelerator is `doca` or
-`rebellions` when present. A tag without an architecture suffix is the multi-arch
-manifest list built from the per-arch tags:
+**Tag grammar:** `v<major>.<minor>.<patch>[-<accelerator>]-cilium-<arch>`, where
+the version is the Kubernetes version the image ships, the accelerator is `doca`
+when present, and `-cilium` is the variant token this branch appends to every
+tag it publishes (the `master` branch publishes the same repositories without
+it). A tag without an architecture suffix is the multi-arch manifest list built
+from the per-arch tags:
 
 ```
-v1.36.3-amd64             plain, x86
-v1.36.3-doca-aarch64      NVIDIA DOCA/OFED + CUDA, arm64
-v1.36.3-rebellions-amd64  Rebellions ATOM driver, x86
-v1.36.3                   manifest list over both architectures
+v1.36.3-cilium-amd64           plain, x86
+v1.36.3-doca-cilium-aarch64    NVIDIA DOCA/OFED + CUDA, arm64
+v1.36.3-cilium                 manifest list over both architectures
 ```
 
 Consumers of these tags — the Petasus catalog in particular — parse this grammar,
@@ -99,7 +100,7 @@ editing the committed files.
 ```
 setup*                repos, dist-upgrade, base packages
 node                  sysctls, kernel modules, swap off, auditd
-kernel                full upgrade + reboot into the newest kernel
+kernel                asserts the guest booted the newest kernel
 providers                                    ← every kmod build below targets it
 containerd
 kubernetes            kubelet/kubeadm/kubectl; pre-pulls the control-plane images
@@ -111,8 +112,7 @@ security
 customize
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
-ddn, vast             ┘
-rebellions              accel_provider = rebellions
+vast                  ┘
 manifest              collects the component inventory
 sysprep               kernel cleanup, cache purge, machine-id and log reset
 freeze                  accel_provider = nvidia; must stay last
@@ -128,31 +128,39 @@ Goss runs after Ansible as a Packer provisioner; its specs live in `packer/goss/
 
 ## Kernel Currency
 
-The `kernel` role runs early — right after `node`, before every role that builds a
-kernel module — and on **every** build, regardless of distro or whether an
-accelerator was selected:
+The guest boots the newest kernel its distro offers before the playbook starts, on
+**every** build, regardless of distro or whether an accelerator was selected. Packer
+does it in three provisioners ahead of Ansible (`packer/qemu/packer.json`):
 
-1. **Full system upgrade**, which installs the newest kernel the distro offers
-   (`dnf upgrade` on EL, `apt full-upgrade` on Ubuntu — `full`, because a kernel
-   ABI bump arrives as a *new* `linux-image-<abi>` package that a plain upgrade
-   would never install).
-2. **Reboot into it**, but only when the newest installed kernel differs from the
-   running one, then re-gather facts so `ansible_kernel` reflects the kernel the
-   image will actually boot.
+1. **Full system upgrade** — `scripts/upgrade-kernel.sh` installs the newest kernel
+   the distro offers (`dnf upgrade` on EL, `apt full-upgrade` on Ubuntu — `full`,
+   because a kernel ABI bump arrives as a *new* `linux-image-<abi>` package that a
+   plain upgrade would never install), and drops a `/run` marker when the newest
+   installed kernel is not the running one.
+2. **Reboot into it**, but only when that marker is there.
+3. **A reconnect gate**, so every provisioner after it runs on the final kernel.
+
+The `kernel` role is the check. It runs early — right after `node`, before every role
+that builds a kernel module — and asserts the running kernel is the newest installed,
+so a reboot that silently did not happen fails the build before a single module is
+built. The work cannot live in the playbook: packer's Ansible provisioner proxies
+every task through its own SSH connection, and a reboot mid-playbook leaves the
+in-flight task hanging forever instead of failing.
 
 The reboot is the point. Kernel packages are install-only: an upgrade lays the new
 kernel down but leaves the old one running, while grub will default to the new
-one. Without the reboot an image ships a kernel that its DOCA/OFED, NVIDIA, DDN
-lustre, VAST and OVS datapath modules were never built against, and the roles that
-pin headers to `ansible_kernel` pin them to the wrong version.
+one. Without the reboot an image ships a kernel that its DOCA/OFED, NVIDIA and
+VAST modules were never built against, and the roles that pin headers to
+`ansible_kernel` pin them to the wrong version.
 
-Two supporting changes make this work:
+On Ubuntu every image also installs the `linux-image-generic` and
+`linux-headers-generic` metapackages (`roles/node` defaults, applied by `setup`), so
+the DKMS roles always find headers for the kernel the image boots.
 
-* The `setup` role no longer holds the kernel back. It used to `apt-mark hold` the
-  `linux-image-virtual` meta packages and exclude `kernel*`/`kmod*` from the EL
-  update, which is what kept images on their base image's kernel.
-* Packer passes SSH keepalives to Ansible, so the provisioner's proxy connection
-  survives the reboot.
+Nothing holds the kernel back. Both `scripts/upgrade-kernel.sh` and the `setup`
+role `apt-mark unhold` every `linux-*` package before upgrading — including holds
+inherited from the base cloud image — and the EL update excludes no
+`kernel*`/`kmod*`.
 
 **Superseded kernels are removed at sysprep.** Neither `apt autoremove` nor
 `dnf autoremove` clears the previous kernel — on Ubuntu the base image's kernel is
@@ -174,7 +182,7 @@ out of it is then pinned for the life of the image — see [Upgrade Freeze](#upg
 
 `accel_provider` in `packer/config/common.json` selects the accelerator stack; the
 variant workflows patch it before building. `nvidia` pulls in `nvidia/doca`,
-`nvidia/cuda`, `ddn` and `vast`; `rebellions` pulls in the Rebellions driver role.
+`nvidia/cuda` and `vast`.
 
 **DOCA-OFED is built through DKMS**, not by compiling the `mlnx-ofa_kernel` RPM
 with `doca-kernel-support`. On kernels newer than NVIDIA's qualified list that
@@ -193,9 +201,9 @@ Ansible output on failure.
 ## Upgrade Freeze
 
 Accelerator images ship kernel modules built against the exact kernel they boot —
-DOCA/OFED, the prebuilt Lustre client, the source-compiled VAST NFS client — and
-sysprep has removed every other kernel, so there is no fallback boot entry if an
-upgrade breaks the set. `rdma-core` and `libibverbs` make it worse: they also
+DOCA/OFED and the source-compiled VAST NFS client — and sysprep has removed every
+other kernel, so there is no fallback boot entry if an upgrade breaks the set.
+`rdma-core` and `libibverbs` make it worse: they also
 exist in the distro repositories, where a routine OS patch would replace the
 OFED-built copies with stock ones.
 
@@ -265,7 +273,7 @@ fill the volume, so anything sizing a long-lived VM should add its own headroom
 (edgespray requests 20Gi for these 16Gi disks).
 
 ```bash
-skopeo inspect docker://quay.io/edgestack/ubuntu-2404-kube:v1.36.3-amd64 \
+skopeo inspect docker://quay.io/edgestack/ubuntu-2404-kube:v1.36.3-cilium-amd64 \
   | jq -r '.Labels["ai.petasus.disk"]' | jq -r .minPvcSize
 ```
 
@@ -392,9 +400,8 @@ case the tag name is the Kubernetes version to build.
 
 | Workflow | Builds |
 |---|---|
-| `main.yaml` | plain images, both distros and architectures |
-| `doca_image.yaml` | `-doca` variants (`accel_provider=nvidia`) |
-| `rebellions.yaml` | `-rebellions` variants |
+| `main.yaml` | plain images (`-cilium` tags), both distros and architectures |
+| `doca_image.yaml` | `-doca-cilium` variants (`accel_provider=nvidia`) |
 | `auto-kube-release.yaml` | nothing — daily detector that dispatches the two build workflows when upstream publishes a Kubernetes patch we have not built (`scripts/pending-kube-builds.py`) |
 | `auto-remediate.yaml` | nothing — daily detector that dispatches rebuilds for images whose readiness grade a rebuild would restore (see below) |
 | `check-sigstore-egress.yaml` | pre-flight: can the runners reach Fulcio, Rekor and the TUF CDN? Read-only, credential-free, no signing |
