@@ -1,88 +1,28 @@
+# Lustre client (DDN build, prebuilt packages; dkms rebuilds against the running kernel):
+# https://wiki.lustre.org/Installing_the_Lustre_Software
+# The packer upgrade-kernel provisioner already rebooted the guest into the newest
+# kernel, so the metapackages below resolve to the running kernel — no pinned kernel
+# packages, no equivs dummies, no apt-mark hold. The dkms kernel hook rebuilds lustre
+# on node-side kernel upgrades.
 - name: Clone pre-built lustre repository
   git:
     repo: "{{ lustre_repo }}"
     dest: /tmp/prebuilt-lustre
     version: main
 
-- name: Debug current kernel version
-  debug:
-    msg: "Current kernel version is {{ ansible_kernel }}"
-
-- name: Install specific kernel image and headers
-  apt:
-    name:
-      - "linux-image-{{ ansible_kernel }}"
-      - "linux-headers-{{ ansible_kernel }}"
-    state: present
-  register: kernel_install
-
-- name: Install equivs tool
-  apt:
-    name: equivs
-    state: present
-
-- name: Create control file for linux-image dummy
-  copy:
-    dest: /tmp/linux-image-equivs.control
-    content: |
-      Section: misc
-      Priority: optional
-      Standards-Version: 3.9.2
-      Package: linux-image
-      Version: {{ dummy_version }}
-      Architecture: all
-      Provides: linux-image
-      Description: Dummy linux-image package to satisfy Lustre DKMS dependency
-
-- name: Build linux-image dummy package
-  command: equivs-build /tmp/linux-image-equivs.control
-  args:
-    chdir: /tmp
-
-- name: Install linux-image dummy package
-  apt:
-    deb: /tmp/linux-image_{{ dummy_version }}_all.deb
-    state: present
-
-- name: Create & build linux-image-generic dummy
-  block:
-    - copy:
-        dest: /tmp/linux-image-generic-equivs.control
-        content: |
-          Section: misc
-          Priority: optional
-          Standards-Version: 3.9.2
-          Package: linux-image-generic
-          Version: {{ dummy_version }}
-          Architecture: all
-          Provides: linux-image-generic
-          Description: Dummy linux-image-generic package to satisfy Lustre DKMS dependency
-    - command: equivs-build /tmp/linux-image-generic-equivs.control
-      args:
-        chdir: /tmp
-    - apt:
-        deb: /tmp/linux-image-generic_{{ dummy_version }}_all.deb
-        state: present
-
-- name: Clean up temporary control files
-  file:
-    path: /tmp/linux-image*-equivs.control
-    state: absent
-
-- name: Hold the installed kernel packages
-  shell: |
-    apt-mark hold linux-image-{{ ansible_kernel }} \
-                 linux-headers-{{ ansible_kernel }}
-  when: kernel_install.changed
-
+# The dkms deb's kernel Depends is versioned ("linux-image-generic (>= 3.10) | ..."),
+# which the cloud image's linux-image-<abi>-generic packages cannot satisfy: they only
+# carry an unversioned Provides of the virtual "linux-image". The stock metapackages
+# are versioned and track the newest (= running) kernel.
 - name: Install lustre dependencies
   apt:
-    name: "{{ item }}"
+    name:
+      - libjson-c-dev
+      - libyaml-dev
+      - linux-image-generic
+      - linux-headers-generic
     state: present
     update_cache: yes
-  with_items:
-  - libjson-c-dev
-  - libyaml-dev
 
 - name: Find lustre dkms module deb files in /tmp folder
   find:

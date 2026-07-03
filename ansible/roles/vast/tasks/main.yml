@@ -1,4 +1,6 @@
 ---
+# VAST NFS client driver, built from the official source bundle (vast_nfs_url fetches the
+# latest release): https://vastnfs.vastdata.com/docs/4.0/Intro.html
 - name: Ensure work directory exists
   file:
     path: "{{ vast_work_dir }}"
@@ -34,6 +36,7 @@
   set_fact:
     vast_src_dir: "{{ vast_archive.files[0].path | dirname }}/{{ vast_archive.files[0].path | basename | regex_replace('\\.tar\\.xz$', '') }}"
 
+# Build the VAST client only on kernels <= 6.8; newer kernels keep the stock in-tree NFS client.
 - import_tasks: debian.yml
   when:
     - ansible_os_family == "Debian"

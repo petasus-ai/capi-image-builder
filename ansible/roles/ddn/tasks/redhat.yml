@@ -1,3 +1,5 @@
+# Lustre client (DDN build, prebuilt packages; dkms rebuilds against the running kernel):
+# https://wiki.lustre.org/Installing_the_Lustre_Software
 - name: Install lustre dependencies
   yum:
     name: "{{ item }}"

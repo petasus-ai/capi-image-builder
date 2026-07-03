@@ -4,7 +4,7 @@
       - gcc
       - make
       - rpm-build
-      - "kernel-devel-{{ ansible_kernel }}"
+      - kernel-devel
     state: present
 
 - name: Build VAST client RPMs
