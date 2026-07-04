@@ -1,10 +1,4 @@
 ---
-- import_tasks: debian-prep.yml
-  when: ansible_os_family == "Debian"
-
-- import_tasks: redhat-prep.yml
-  when: ansible_os_family == "RedHat"
-
 - name: Build distro string from OS facts
   set_fact:
     distro_string: >-
@@ -16,11 +10,11 @@
         unsupported
       {%- endif %}
 
-- name: Detect architecture string to use in repo path (allow override with doca_arch)
+- name: Detect architecture string to use in repo path
   set_fact:
     arch_detect_raw: "{{ (ansible_facts['architecture'] | default(ansible_architecture)) | lower() }}"
 
-- name: Map detected architecture to repo directory (or use override)
+- name: Map detected architecture to repo directory
   set_fact:
     arch_repo: >-
       {%- set a = arch_detect_raw | trim -%}

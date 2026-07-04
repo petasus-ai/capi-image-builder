@@ -1,6 +1,6 @@
 {
   "crictl_sha256": "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{user `crictl_version`}}/crictl-v{{user `crictl_version`}}-linux-{{user `distro_arch`}}.tar.gz.sha256",
-  "crictl_source_type": "pkg",
+  "crictl_source_type": "http",
   "crictl_version": "1.36.0",
   "kubeadm_template": "etc/kubeadm.yml",
   "kubernetes_container_registry": "registry.k8s.io",

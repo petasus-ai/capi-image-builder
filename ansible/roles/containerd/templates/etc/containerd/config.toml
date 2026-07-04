@@ -40,12 +40,10 @@ imports = ["/etc/containerd/conf.d/*.toml"]
           endpoint = ["https://edgestack.harbor.core:32443"]
         [plugins."io.containerd.grpc.v1.cri".registry.configs."edgestack.harbor.core:32443".tls]
           insecure_skip_verify = true
-{% if kubernetes_semver is version('v1.21.0', '>=') %}
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
     runtime_type = "io.containerd.runc.v2"
   [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
     SystemdCgroup = true
-{% endif %}
 {% if packer_builder_type.startswith('azure') %}
   [plugins."io.containerd.grpc.v1.cri".registry.headers]
     X-Meta-Source-Client = ["azure/capz"]

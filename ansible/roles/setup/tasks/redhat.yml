@@ -20,18 +20,13 @@
     auto_attach: true
   when: ansible_distribution == "RedHat"
 
-- name: import epel gpg key
-  rpm_key:
-    state: present
-    key: "{{ epel_rpm_gpg_key }}"
-  when: epel_rpm_gpg_key != ""
-
+# EPEL: Rocky ships epel-release (repo + GPG key) in its Extras repository.
+# https://docs.fedoraproject.org/en-US/epel/getting-started/
 - name: add epel repo
   yum:
-    name: "{{ redhat_epel_rpm }}"
+    name: epel-release
     state: present
     lock_timeout: 60
-  when: redhat_epel_rpm != ""
 
 - name: "Enable RockyLinux Plus repo"
   community.general.ini_file:

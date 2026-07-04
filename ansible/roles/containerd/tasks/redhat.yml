@@ -17,10 +17,3 @@
     name: libseccomp
     state: present
     lock_timeout: 60
-
-- name: Install epel-release
-  yum:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - epel-release

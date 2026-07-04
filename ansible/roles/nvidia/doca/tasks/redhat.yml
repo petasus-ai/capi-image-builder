@@ -49,6 +49,8 @@
     state: present
   when: ansible_architecture == "aarch64"
 
+# Known issue: the 3.4.0 rhel9 packages carry no GPG signature (rpm -qp --qf '%{SIGPGP:pgpsig}'
+# returns none) even though the repo ships RPM-GPG-KEY-doca, so gpgcheck cannot be enabled.
 - name: Ensure DOCA YUM repository is present
   yum_repository:
     name: "{{ doca_repo_id }}"
@@ -147,3 +149,19 @@
     name: dkms
     enabled: yes
   failed_when: false   # unit name may vary across releases; tolerate absence
+
+- name: Install GDS related packages
+  dnf:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - mlnx-nfsrdma-dkms
+    - mlnx-nvme-dkms
+
+# The GDS packages register their own DKMS modules and a %post build failure does not fail the
+# rpm transaction. Re-run autoinstall so a module that silently failed to build fails the image
+# build here instead.
+- name: Verify the GDS DKMS modules built for the running kernel
+  command: dkms autoinstall -k {{ ansible_kernel }}
+  changed_when: false

@@ -1,16 +1,12 @@
 ---
-# VAST NFS client driver, built from the official source bundle (vast_nfs_url fetches the
-# latest release): https://vastnfs.vastdata.com/docs/4.0/Intro.html
+# VAST NFS client driver, built from the official source bundle (vast_nfs_url downloads
+# the latest release, 4.5.x): https://vastnfs.vastdata.com/docs/4.5/intro.html
+# Supported kernels: https://vastnfs.vastdata.com/docs/4.5/build/kernels.html
 - name: Ensure work directory exists
   file:
     path: "{{ vast_work_dir }}"
     state: directory
     mode: '0755'
-
-- name: parse kernel major/minor
-  set_fact:
-    kernel_major: "{{ (ansible_kernel | regex_search('^\\d+') | default('0')) | int }}"
-    kernel_minor: "{{ (ansible_kernel | regex_search('^\\d+\\.(\\d+)', '\\1') | default(['0']))[0] | int }}"
 
 - name: Download and run the latest VAST download script
   shell: |
@@ -36,16 +32,11 @@
   set_fact:
     vast_src_dir: "{{ vast_archive.files[0].path | dirname }}/{{ vast_archive.files[0].path | basename | regex_replace('\\.tar\\.xz$', '') }}"
 
-# Build the VAST client only on kernels <= 6.8; newer kernels keep the stock in-tree NFS client.
 - import_tasks: debian.yml
-  when:
-    - ansible_os_family == "Debian"
-    - (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+  when: ansible_os_family == "Debian"
 
 - import_tasks: redhat.yml
-  when:
-    - ansible_os_family == "RedHat"
-    - (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
+  when: ansible_os_family == "RedHat"
 
 - name: Deploy systemd unit for loading VAST NFS after network
   copy:
@@ -62,16 +53,13 @@
 
       [Install]
       WantedBy=multi-user.target
-  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
 
 - name: Reload systemd
   systemd:
     daemon_reload: yes
-  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)
 
 - name: Enable and start vastnfs-load
   systemd:
     name: "vastnfs-load"
     enabled: yes
     state: started
-  when: (kernel_major | int) < 6 or ((kernel_major | int) == 6 and (kernel_minor | int) <= 8)

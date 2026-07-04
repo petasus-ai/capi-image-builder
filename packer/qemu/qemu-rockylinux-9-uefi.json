@@ -6,13 +6,11 @@
   "distro_name": "rockylinux",
   "ssh_username": "rocky",
   "distro_version": "9",
-  "epel_rpm_gpg_key": "https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9",
   "guest_os_type": "linux-64",
   "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
   "iso_checksum_type": "file",
   "iso_url": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2",
   "iso_checksum": "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2.CHECKSUM",
   "os_display_name": "RockyLinux 9",
-  "redhat_epel_rpm": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
   "shutdown_command": "/sbin/halt -h -p"
 }
