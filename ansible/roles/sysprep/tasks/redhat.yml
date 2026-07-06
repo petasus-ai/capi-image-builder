@@ -58,6 +58,22 @@
 - name: Reset network interface IDs
   shell: sed -i '/^\(HWADDR\|UUID\)=/d' /etc/sysconfig/network-scripts/ifcfg-*
 
+# cloud-init's NetworkManager renderer wrote a cloud-init-<iface>.nmconnection keyfile
+# during the build (DHCP fallback over the QEMU NIC), pinning the build VM's MAC. Drop it;
+# tenant cloud-init regenerates one per instance for the real NIC. (netplan leftovers are
+# handled generically by main.yml.)
+- name: Find cloud-init build-time NetworkManager profiles
+  find:
+    paths: /etc/NetworkManager/system-connections
+    patterns: 'cloud-init-*.nmconnection'
+  register: ci_nm_profiles
+
+- name: Remove cloud-init build-time NetworkManager profiles
+  file:
+    state: absent
+    path: "{{ item.path }}"
+  loop: "{{ ci_nm_profiles.files }}"
+
 - name: Remove the kickstart log
   file:
     state: absent
