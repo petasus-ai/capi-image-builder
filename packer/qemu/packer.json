@@ -172,8 +172,11 @@
     "ansible_extra_vars": "ansible_python_interpreter=/usr/bin/python3",
     "boot_wait": "10s",
     "build_timestamp": "{{timestamp}}",
+    "containerd_runc_checksum_url": "https://github.com/opencontainers/runc/releases/download/v{{user `runc_version`}}/runc.sha256sum",
+    "containerd_runc_url": "https://github.com/opencontainers/runc/releases/download/v{{user `runc_version`}}/runc.{{user `distro_arch`}}",
+    "containerd_service_url": "https://raw.githubusercontent.com/containerd/containerd/refs/tags/v{{user `containerd_version`}}/containerd.service",
     "containerd_sha256": null,
-    "containerd_url": "https://github.com/containerd/containerd/releases/download/v{{user `containerd_version`}}/cri-containerd-cni-{{user `containerd_version`}}-linux-{{user `distro_arch`}}.tar.gz",
+    "containerd_url": "https://github.com/containerd/containerd/releases/download/v{{user `containerd_version`}}/containerd-{{user `containerd_version`}}-linux-{{user `distro_arch`}}.tar.gz",
     "containerd_version": null,
     "cpus": "1",
     "crictl_url": "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{user `crictl_version`}}/crictl-v{{user `crictl_version`}}-linux-{{user `distro_arch`}}.tar.gz",
@@ -206,6 +209,7 @@
     "output_directory": "./output/{{user `build_name`}}-kube-{{user `kubernetes_semver`}}",
     "python_path": "",
     "qemu_binary": "qemu-system-{{user `cpu_arch`}}",
+    "runc_version": null,
     "ssh_password": "builder",
     "cloud_init_image": "cloudinit/packer.init"
   }

@@ -1,0 +1,8 @@
+# Registry host config for the private harbor registry. Replaces the
+# containerd 1.x registry.mirrors/registry.configs entries (removed in
+# containerd 2.0) that used to set insecure_skip_verify for this host.
+server = "https://edgestack.harbor.core:32443"
+
+[host."https://edgestack.harbor.core:32443"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true

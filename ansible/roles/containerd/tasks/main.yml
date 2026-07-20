@@ -39,33 +39,50 @@
     dest: /tmp/containerd.tar.gz
     mode: 0600
 
+# containerd release tarballs (>= 2.0) ship only the containerd binaries; the
+# systemd unit and runc are published separately (the cri-containerd-cni
+# bundle that used to carry them was discontinued with containerd 2.0).
+- name: Download containerd.service
+  get_url:
+    url: "{{ containerd_service_url }}"
+    dest: /tmp/containerd.service
+    mode: 0600
+
+- name: Download runc
+  get_url:
+    url: "{{ containerd_runc_url }}"
+    checksum: "sha256:{{ containerd_runc_checksum_url }}"
+    dest: /tmp/runc
+    mode: 0600
+
 - name: Create a directory if it does not exist
   file:
     path: "{{ sysusr_prefix }}/bin"
     state: directory
     mode: 0755
 
-# TODO(vincepri): This unpacks the entire tar in the root directory
-# we should find a better way to check what's being unpacked and where.
+# The release tarball is rooted at bin/, so binaries land in /usr/local/bin.
 - name: unpack containerd
   unarchive:
     remote_src: True
     src: /tmp/containerd.tar.gz
-    dest: /
+    dest: /usr/local
     extra_opts:
       - --no-overwrite-dir
 
-# Remove /opt/cni directory, as we will install cni later
-- name: delete /opt/cni directory
-  file:
-    path: /opt/cni
-    state: absent
+- name: Copy containerd.service to /etc/systemd/system
+  copy:
+    remote_src: True
+    src: /tmp/containerd.service
+    dest: /etc/systemd/system/containerd.service
+    mode: 0644
 
-# Remove /etc/cni directory, as we will configure cni later
-- name: delete /etc/cni directory
-  file:
-    path: /etc/cni
-    state: absent
+- name: Copy runc to /usr/local/sbin
+  copy:
+    remote_src: True
+    src: /tmp/runc
+    dest: /usr/local/sbin/runc
+    mode: 0755
 
 - name: Creates unit file directory
   file:
@@ -96,6 +113,25 @@
     path: /etc/containerd
     state: directory
 
+- name: Creates containerd extra config directory
+  file:
+    path: /etc/containerd/conf.d
+    state: directory
+
+# containerd 2.0 removed the CRI registry.mirrors/registry.configs settings;
+# per-registry endpoints and TLS options now live in certs.d hosts.toml files
+# referenced by the registry config_path in config.toml.
+- name: Creates containerd registry host config directory for harbor
+  file:
+    path: "/etc/containerd/certs.d/edgestack.harbor.core:32443"
+    state: directory
+
+- name: Copy in harbor registry hosts.toml
+  template:
+    dest: "/etc/containerd/certs.d/edgestack.harbor.core:32443/hosts.toml"
+    src: etc/containerd/certs.d/hosts.toml
+    mode: 0644
+
 - name: Copy in containerd config file {{ containerd_config_file }}
   template:
     dest: /etc/containerd/config.toml
@@ -117,4 +153,14 @@
 - name: delete tarball
   file:
     path: /tmp/containerd.tar.gz
+    state: absent
+
+- name: delete containerd.service download
+  file:
+    path: /tmp/containerd.service
+    state: absent
+
+- name: delete runc download
+  file:
+    path: /tmp/runc
     state: absent

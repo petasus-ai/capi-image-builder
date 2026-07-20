@@ -1,14 +1,35 @@
 ## template: jinja
 
+{% if containerd_version is version('2.0.0', '>=') %}
+# Config version 3 is the native format for containerd 2.x (version 1 was
+# removed in 2.0 and version 2 is deprecated).
+version = 3
+{% else %}
 # Use config version 2 to enable new configuration fields.
 # Config file is parsed as version 1 by default.
 version = 2
+{% endif %}
 
 {% if 'imports' not in containerd_additional_settings | b64decode %}
 imports = ["/etc/containerd/conf.d/*.toml"]
 {% endif %}
 
 [plugins]
+{% if containerd_version is version('2.0.0', '>=') %}
+  [plugins.'io.containerd.cri.v1.images'.pinned_images]
+    sandbox = "{{ pause_image }}"
+  # registry.mirrors/registry.configs were removed in containerd 2.0;
+  # per-registry endpoints and TLS options come from certs.d hosts.toml
+  # files under config_path (see the harbor hosts.toml in this role).
+  [plugins.'io.containerd.cri.v1.images'.registry]
+    config_path = '/etc/containerd/certs.d'
+{% if kubernetes_semver is version('v1.21.0', '>=') %}
+  [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc]
+    runtime_type = 'io.containerd.runc.v2'
+  [plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runc.options]
+    SystemdCgroup = true
+{% endif %}
+{% else %}
   [plugins."io.containerd.grpc.v1.cri"]
     sandbox_image = "{{ pause_image }}"
   [plugins."io.containerd.grpc.v1.cri".registry]
@@ -28,6 +49,7 @@ imports = ["/etc/containerd/conf.d/*.toml"]
 {% if packer_builder_type.startswith('azure') %}
   [plugins."io.containerd.grpc.v1.cri".registry.headers]
     X-Meta-Source-Client = ["azure/capz"]
+{% endif %}
 {% endif %}
 
 {{containerd_additional_settings | b64decode}}
