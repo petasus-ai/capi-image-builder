@@ -3,6 +3,6 @@ doca_repo_name: "DOCA Online Repo"
 doca_base_prefix: "https://linux.mellanox.com/public/repo/doca"
 doca_ofed_package: "doca-ofed"
 
-_doca_key_tmp: "/tmp/GPG-KEY-Mellanox.pub"
-_trusted_key_path: "/etc/apt/trusted.gpg.d/GPG-KEY-Mellanox.pub"
+_doca_keyring_file: "doca_keyring.gpg"
+_trusted_key_path: "/etc/apt/keyrings/doca_keyring.gpg"
 _sources_list: "/etc/apt/sources.list.d/doca.list"
