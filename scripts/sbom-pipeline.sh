@@ -84,6 +84,28 @@ FALLBACK_IMAGE_TAG="sbom-guestfs-appliance:fedora42"
 #   dropping this one removes declared-but-not-installed false positives only.
 SYFT_CATALOGER_SELECT="-linux-kernel-cataloger,-python-package-cataloger"
 
+# Path exclusion, for the same "what is installed on THIS host" reason.
+#
+# containerd's default overlayfs snapshotter leaves every pulled image layer
+# extracted on disk under /var/lib/containerd/io.containerd.snapshotter.v1.*/,
+# dpkg/rpm database included. Builders that pre-pull images into the guest (the
+# kubernetes role runs `kubeadm config images pull`) therefore ship complete
+# foreign root filesystems, and syft catalogues their packages as if they were
+# installed on the host.
+#
+# grype then resolves those packages against the HOST's distro feed, which is
+# wrong in both directions: a Debian bookworm libc6 (2.36-9+deb12uNN) out of the
+# registry.k8s.io images gets matched against Ubuntu's glibc feed and reported as
+# fixable by 2.39-0ubuntuN — a "fix" no amount of apt upgrade can ever apply,
+# because the package is not the host's to upgrade. On an Ubuntu 24.04 golden
+# image that single mis-attributed package accounted for every actionable
+# finding in the report.
+#
+# The bundled images are still shipped and still worth scanning; they just have
+# to be scanned as images, in their own distro context, rather than folded into
+# the host SBOM.
+SYFT_EXCLUDE_CONTAINERD='./var/lib/containerd/**'
+
 WORK=""
 MNT=""
 PUBLISH_SKIPPED="false"
@@ -184,7 +206,7 @@ scan_in_container() {
       export LIBGUESTFS_BACKEND=direct SYFT_FILE_METADATA_SELECTION=none
       mnt=\$(mktemp -d)
       guestmount -a '/in/${qname}' -i --ro \"\$mnt\"
-      syft scan \"dir:\$mnt\" -o spdx-json -q --select-catalogers '${SYFT_CATALOGER_SELECT}' --source-name '${REGISTRY}/${repo}' --source-version '${tag}' > /work/sbom-raw.json
+      syft scan \"dir:\$mnt\" -o spdx-json -q --select-catalogers '${SYFT_CATALOGER_SELECT}' --exclude '${SYFT_EXCLUDE_CONTAINERD}' --source-name '${REGISTRY}/${repo}' --source-version '${tag}' > /work/sbom-raw.json
       guestunmount \"\$mnt\""
 }
 
@@ -203,6 +225,7 @@ scan_qcow2() {
     log "scanning with syft (package-level, file catalog disabled)"
     SYFT_FILE_METADATA_SELECTION=none syft scan "dir:${MNT}" -o spdx-json -q \
       --select-catalogers "$SYFT_CATALOGER_SELECT" \
+      --exclude "$SYFT_EXCLUDE_CONTAINERD" \
       --source-name "${REGISTRY}/${repo}" \
       --source-version "${tag}" \
       > "$WORK/sbom-raw.json"
