@@ -116,12 +116,18 @@ jobs:
       - name: Build & push container image
         run: |
           COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # Disk geometry travels with the image so a DataVolume author does not
+          # have to know packer's disk_size. Packer names the disk after its own
+          # output directory and gives it no extension, hence the basename.
+          BUILD_DIR="output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}"
+          DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
           # every external reader. .revision stays as opaque text for internal audit
           # ("which build produced this image?") without advertising a destination.
           sudo docker build \
             --label "ai.petasus.components=${COMPONENTS}" \
+            --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
@@ -216,12 +222,18 @@ jobs:
       - name: Build & push container image
         run: |
           COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # Disk geometry travels with the image so a DataVolume author does not
+          # have to know packer's disk_size. Packer names the disk after its own
+          # output directory and gives it no extension, hence the basename.
+          BUILD_DIR="output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}"
+          DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
           # every external reader. .revision stays as opaque text for internal audit
           # ("which build produced this image?") without advertising a destination.
           sudo docker build \
             --label "ai.petasus.components=${COMPONENTS}" \
+            --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
@@ -320,12 +332,18 @@ jobs:
       - name: Build & push container image
         run: |
           COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # Disk geometry travels with the image so a DataVolume author does not
+          # have to know packer's disk_size. Packer names the disk after its own
+          # output directory and gives it no extension, hence the basename.
+          BUILD_DIR="output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}"
+          DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
           # every external reader. .revision stays as opaque text for internal audit
           # ("which build produced this image?") without advertising a destination.
           sudo docker build \
             --label "ai.petasus.components=${COMPONENTS}" \
+            --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
@@ -420,12 +438,18 @@ jobs:
       - name: Build & push container image
         run: |
           COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # Disk geometry travels with the image so a DataVolume author does not
+          # have to know packer's disk_size. Packer names the disk after its own
+          # output directory and gives it no extension, hence the basename.
+          BUILD_DIR="output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}"
+          DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
           # every external reader. .revision stays as opaque text for internal audit
           # ("which build produced this image?") without advertising a destination.
           sudo docker build \
             --label "ai.petasus.components=${COMPONENTS}" \
+            --label "ai.petasus.disk=${DISK}" \
             --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
