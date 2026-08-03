@@ -1,0 +1,88 @@
+---
+# Where the component manifest lands on the Packer controller. It must sit
+# inside the artifact directory, because CI builds the container image from
+# that directory and reads the manifest from there. Mirrors packer.json's
+# output_directory (./output/{{build_name}}-kube-{{kubernetes_semver}}).
+component_manifest_path: >-
+  {{ playbook_dir }}/../output/{{ build_name | default('unknown') }}-kube-{{
+  kubernetes_semver | default('unknown') }}/components.json
+
+# Curated catalog of components reported in the image metadata. Only entries
+# listed here are exported -- the full package list is intentionally not.
+#
+# Matching rules per entry:
+#   match: exact  (default) -- a candidate must equal an installed package name
+#   match: prefix           -- a candidate matches installed packages whose name
+#                              starts with it; the alphabetically first match is
+#                              used (base packages sort before sub-packages)
+# Candidates in pkgs are tried in order and the first hit wins, so deb and rpm
+# spellings of the same component can live in a single entry.
+golden_component_map:
+  # kubelet is the canonical one -- kubeadm and kubectl are pinned to the same
+  # version by the kubernetes role, so reporting all three would be noise.
+  - name: Kubernetes
+    pkgs: [kubelet]
+
+  - name: QEMU Guest Agent
+    pkgs: [qemu-guest-agent]
+
+  # deb: openvswitch-switch / rpm: openvswitch
+  - name: Open vSwitch
+    match: prefix
+    pkgs: [openvswitch-switch, openvswitch]
+
+  - name: DOCA OFED
+    pkgs: [doca-ofed]
+
+  # deb: nvidia-open-<ver> (<590) or nvidia-open (>=590)
+  # rpm: nvidia-driver (EL8/9 dnf module) or nvidia-open (EL10)
+  - name: NVIDIA Driver
+    match: prefix
+    pkgs: [nvidia-open, nvidia-driver]
+
+  # cuda-toolkit-12-8, cuda-toolkit-13-0, ...
+  - name: CUDA Toolkit
+    match: prefix
+    pkgs: [cuda-toolkit-]
+
+  # deb: libnccl2 / rpm: libnccl
+  - name: NCCL
+    pkgs: [libnccl2, libnccl]
+
+  # datacenter-gpu-manager-4-cuda12 / -cuda13 (+ -core/-libs sub-packages)
+  - name: DCGM
+    match: prefix
+    pkgs: [datacenter-gpu-manager-4]
+
+  - name: NVIDIA Container Toolkit
+    pkgs: [nvidia-container-toolkit]
+
+  # deb: lustre-client-utils / rpm: lustre-client
+  - name: DDN Lustre Client
+    pkgs: [lustre-client-utils, lustre-client]
+
+  # Built from the upstream tarball at image build time; only present on
+  # kernels <= 6.8 (newer kernels ship a native client)
+  - name: VAST NFS Client
+    match: prefix
+    pkgs: [vastnfs]
+
+# Components installed outside the package manager -- this builder pulls
+# containerd, runc and crictl from upstream tarballs, so they own no package
+# entry. Each probe runs `path args` and takes the first semver-looking token
+# out of the combined stdout/stderr. CNI plugins are probed rather than mapped
+# because they arrive either way (kubernetes_cni_source_type = http or pkg) and
+# land in /opt/cni/bin regardless. A missing binary is skipped silently.
+golden_component_binaries:
+  - name: containerd
+    path: /usr/local/bin/containerd
+    args: --version
+  - name: runc
+    path: /usr/local/sbin/runc
+    args: --version
+  - name: crictl
+    path: /usr/local/bin/crictl
+    args: --version
+  - name: CNI Plugins
+    path: /opt/cni/bin/bridge
+    args: --version

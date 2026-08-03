@@ -1,0 +1,109 @@
+---
+# Collects the versions of the curated components actually installed in the
+# guest and writes them as JSON into the Packer artifact directory on the build
+# host. CI attaches the file to the container-disk image as the
+# ai.petasus.components label.
+
+# Package listing via the native CLIs: package_facts needs interpreter-specific
+# python bindings (python3-apt / rpm) that are missing on some interpreters
+# (e.g. EL8's python3.9), and installing them would modify the guest.
+- name: List installed packages (dpkg)
+  command: dpkg-query -W -f '${Package}\t${Version}\n'
+  register: _dpkg_list
+  changed_when: false
+  when: ansible_os_family == "Debian"
+
+- name: List installed packages (rpm)
+  command: rpm -qa --qf '%{NAME}\t%{VERSION}\n'
+  register: _rpm_list
+  changed_when: false
+  when: ansible_os_family != "Debian"
+
+- name: Build the package database
+  set_fact:
+    manifest_pkg_db: >-
+      {%- set db = {} -%}
+      {%- for line in (_dpkg_list.stdout_lines | default([])) + (_rpm_list.stdout_lines | default([])) -%}
+        {%- set parts = line.split('\t') -%}
+        {%- if parts | length == 2 and parts[0] not in db -%}
+          {%- set _ = db.update({parts[0]: [{'version': parts[1]}]}) -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ db }}
+
+- name: Start the component list with the running kernel
+  set_fact:
+    manifest_components:
+      - { name: Kernel, version: "{{ ansible_kernel }}" }
+
+- name: Resolve catalog components from installed packages
+  set_fact:
+    manifest_components: "{{ manifest_components + [{'name': item.name, 'version': manifest_pkg_db[matched_pkg][0].version}] }}"
+  vars:
+    matched_pkg: >-
+      {%- set ns = namespace(found='') -%}
+      {%- for cand in item.pkgs -%}
+        {%- if ns.found == '' -%}
+          {%- if item.match | default('exact') == 'prefix' -%}
+            {%- set hits = manifest_pkg_db.keys() | select('match', cand | regex_escape) | sort | list -%}
+          {%- else -%}
+            {%- set hits = [cand] if cand in manifest_pkg_db else [] -%}
+          {%- endif -%}
+          {%- if hits | length > 0 -%}
+            {%- set ns.found = hits | first -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.found }}
+  when: matched_pkg | length > 0
+  loop: "{{ golden_component_map }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# Tarball-installed components. Stat first rather than leaning on failed_when:
+# that keeps "binary absent" distinguishable from "installed binary crashed",
+# which would otherwise both silently drop the component from the manifest.
+- name: Stat the tarball-installed binaries
+  stat:
+    path: "{{ item.path }}"
+  register: manifest_binary_stat
+  loop: "{{ golden_component_binaries }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Probe the tarball-installed binaries for their versions
+  command: "{{ item.item.path }} {{ item.item.args }}"
+  register: manifest_binary_probe
+  changed_when: false
+  failed_when: false
+  when: item.stat.exists
+  loop: "{{ manifest_binary_stat.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Add the tarball-installed components to the component list
+  set_fact:
+    manifest_components: "{{ manifest_components + [{'name': item.item.item.name, 'version': probe_version}] }}"
+  vars:
+    probe_version: "{{ ((item.stdout | default('')) ~ ' ' ~ (item.stderr | default(''))) | regex_search('[0-9]+\\.[0-9]+\\.[0-9]+') | default('', true) }}"
+  when:
+    - not (item.skipped | default(false))
+    - probe_version | length > 0
+  loop: "{{ manifest_binary_probe.results }}"
+  loop_control:
+    label: "{{ item.item.item.name }}"
+
+- name: Ensure the manifest output directory exists on the controller
+  file:
+    path: "{{ component_manifest_path | dirname }}"
+    state: directory
+  delegate_to: localhost
+  become: false
+
+- name: Write the component manifest into the Packer artifact directory
+  copy:
+    content: "{{ manifest_components | to_json }}"
+    dest: "{{ component_manifest_path }}"
+    mode: '0644'
+  delegate_to: localhost
+  become: false

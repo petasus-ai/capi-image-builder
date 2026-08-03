@@ -56,6 +56,10 @@
     - include_role:
         name: vast
       when: accel_provider == "nvidia"
+    # Last before sysprep: every component must already be installed, and
+    # sysprep starts removing the traces the probes read.
+    - include_role:
+        name: manifest
     - include_role:
         name: sysprep
 
