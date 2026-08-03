@@ -247,14 +247,22 @@ them stable and use recognizable product names for new entries.
 
 ```json
 {"virtualSizeBytes":42949672960,"virtualSizeGi":40,"minPvcSizeGi":43,
- "minPvcSize":"43Gi","filesystemOverhead":0.055}
+ "minPvcSize":"43Gi","filesystemOverhead":0.06}
 ```
 
-CDI sizes a DataVolume against the disk's **virtual** size and, on a
-filesystem-mode PVC, additionally reserves `CDIConfig.filesystemOverhead`, so the
-request has to be strictly larger than the image. `minPvcSize` is the floor CDI
-accepts, not a working VM size — cloud-init grows the root filesystem to fill the
-volume, so anything sizing a long-lived VM should add its own headroom.
+The CDI importer compares the disk's **virtual** size with the free space it
+actually finds on the target volume and rejects the import when the disk does
+not fit. A DataVolume `spec.storage` request is first grown by CDI's
+`filesystemOverhead` (`0.06` by default), a `spec.pvc` request is used as is,
+and the filesystem's own metadata comes off the PVC either way, so the request
+has to be strictly larger than the image
+([Data Volumes: Storage](https://github.com/kubevirt/containerized-data-importer/blob/v1.66.0/doc/datavolumes.md#storage),
+[CDI config](https://github.com/kubevirt/containerized-data-importer/blob/v1.66.0/doc/cdi-config.md)). `minPvcSize` is `virtualSizeBytes`
+grown by that default overhead and rounded up to a whole Gi: a floor, not a
+safe value. CDI's 6% is only an assumption, ext4 with its default 5% reserved
+blocks plus metadata loses more, and cloud-init grows the root filesystem to
+fill the volume, so anything sizing a long-lived VM should add its own headroom
+(edgespray requests 20Gi for these 16Gi disks).
 
 ```bash
 skopeo inspect docker://quay.io/edgestack/ubuntu-2404-kube:v1.36.3-amd64 \
