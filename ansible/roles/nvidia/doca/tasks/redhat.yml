@@ -1,22 +1,41 @@
 - name: Ensure CRB repository is enabled
   command: dnf config-manager --set-enabled crb
-  when: ansible_distribution_major_version == "9"
+  when: ansible_distribution_major_version | int >= 9
 
-- name: Install required kernel packages on RHEL/Rocky
+# dkms is provided only by EPEL, so enable EPEL before installing the DKMS build
+# prerequisites.
+- name: Install epel-release
+  dnf:
+    name: epel-release
+    state: present
+
+# DOCA-OFED via DKMS, per the official NVIDIA guide
+# (https://networking-docs.nvidia.com/doca/sdk/DOCA-Host-Installation-and-Upgrade).
+#
+# The alternative -- /opt/mellanox/doca/tools/doca-kernel-support, which compiles
+# the mlnx-ofa_kernel RPM directly -- breaks on kernels newer than NVIDIA's
+# qualified list: the unused mlx5_dpll module fails to compile (backported
+# dpll_ffo_param signatures) and takes the whole build down with it. Now that the
+# kernel role installs the newest distro kernel on every build, that is the
+# common case rather than the exception.
+#
+# The kernel role has already rebooted into the newest kernel by the time this
+# runs, so the running kernel is the newest and the pins below match it. That is
+# also what keeps OFA, lustre and vastnfs on one kernel.
+# kernel-devel-matched satisfies dkms' rich dependency
+# "(kernel-devel-matched if kernel-core)" (https://src.fedoraproject.org/rpms/dkms).
+- name: Install DKMS OFED build prerequisites (match the running kernel)
   dnf:
     name:
+      - dkms
+      - gcc
+      - make
       - "kernel-devel-{{ ansible_kernel }}"
       - "kernel-headers-{{ ansible_kernel }}"
       - "kernel-modules-extra-{{ ansible_kernel }}"
-      - "elfutils-libelf-devel"
+      - kernel-devel-matched
+      - elfutils-libelf-devel
     state: present
-
-- name: Install epel-release
-  dnf:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - epel-release
 
 - name: Install DNF plugins core
   dnf:
@@ -34,64 +53,97 @@
   yum_repository:
     name: "{{ doca_repo_id }}"
     description: "{{ doca_repo_name }}"
-    baseurl: "{{ doca_base_url }}/"
+    baseurl: "{{ doca_base_url }}"
     enabled: yes
     gpgcheck: no
 
-- name: Clean DNF caches
-  dnf:
-    name: "*"
-    state: latest
-    update_cache: true
+# Replaces a task named "Clean DNF caches" that was in fact a full `dnf upgrade
+# '*'` of the guest, run with the DOCA repo enabled. Refreshing the metadata is
+# what the install below actually needs; linux.mellanox.com drops connections
+# often enough to warrant the retries.
+- name: Refresh DOCA repo metadata (yum makecache)
+  command: dnf -y makecache
+  register: _doca_makecache
+  retries: 5
+  delay: 15
+  until: _doca_makecache.rc == 0
+  changed_when: false
 
-- name: Install DOCA extra package
-  dnf:
-    name: "{{ doca_extra_package }}"
-    state: present
-    update_cache: yes
-
-- name: Build DOCA kernel packages for the currently installed kernel
-  shell: "{{ doca_kernel_support_tool }}"
-
-- name: Find DOCA* directories directly under /tmp
-  find:
-    paths: /tmp
-    patterns: '^DOCA.*'
-    use_regex: true
-    file_type: directory
-    depth: 1
-  register: doca_dirs
-
-- name: Fail if no DOCA directory found
-  fail:
-    msg: "No /tmp/DOCA.* directory found on {{ inventory_hostname }}"
-  when: doca_dirs.matched == 0
-
-- name: Search for *.rpm files in each DOCA directory
-  find:
-    paths: "{{ item.path }}"
-    patterns: "*.rpm"
-    recurse: no
-  loop: "{{ doca_dirs.files }}"
-  register: rpm_search_results
-
-- name: Combine found rpm file entries into a single list
-  set_fact:
-    rpm_file_objs: "{{ rpm_search_results.results | map(attribute='files') | sum(start=[]) }}"
-
-- name: Fail if no rpm files found
-  fail:
-    msg: "No rpm files found in any /tmp/DOCA* directory on {{ inventory_hostname }}"
-  when: rpm_file_objs | length == 0
-
-- name: Install all found RPMs using dnf if RHEL-family and dnf available
-  dnf:
-    name: "{{ rpm_file_objs | map(attribute='path') | list }}"
-    state: present
-    disable_gpg_check: yes
-
-- name: Install DOCA OFED package
+- name: Install DOCA-OFED profile (DKMS builds the OFED modules for the running kernel)
   dnf:
     name: "{{ doca_ofed_package }}"
     state: present
     update_cache: yes
+
+# Known issue: kernels newer than NVIDIA's qualified list break the mlx5_dpll compile
+# (e.g. backported dpll_ffo_param ffo_get() signatures) - SyncE clock sync, unused on the
+# nodes - and with it the whole mlnx-ofa_kernel build. Prune it from the build and the dkms
+# registry; the next mlnx-ofa_kernel package update replaces /usr/src and drops this patch
+# with it. A failed %post DKMS build does not fail the rpm transaction above, so this
+# pruning plus the explicit autoinstall below are what actually produce the modules.
+# Qualified kernels: "Supported Host OSs" in
+# https://networking-docs.nvidia.com/doca/archive/3-4-0/doca-host-installation-and-upgrade
+- name: Prune the unused mlx5_dpll module from the OFED DKMS source
+  shell: |
+    set -e
+    src=$(ls -d /usr/src/mlnx-ofa_kernel-*/ | head -1)
+    sed -i 's|^obj-$(CONFIG_MLX5_DPLL) += mlx5_dpll.o|obj-n += mlx5_dpll.o|' "$src/drivers/net/ethernet/mellanox/mlx5/core/Makefile"
+    sed -i 's|mlx5_dpll)[[:space:]]*!.*|mlx5_dpll) true;;|' "$src/dkms.conf"
+
+# iser/isert/srp are RDMA storage modules the nodes do not use, and the most fragile members
+# of the OFED DKMS set (first to break on kernel z-stream drift). Deregister them so dkms
+# autoinstall - here and from the boot-time dkms service - skips them.
+- name: Deregister the unused iser/isert/srp DKMS modules
+  shell: |
+    set -e
+    for spec in $(dkms status | awk -F'[/,:]' '$1 ~ /^(iser|isert|srp)$/ {print $1"/"$2}' | sort -u); do
+      dkms remove "$spec" --all
+    done
+  register: _dkms_drop
+  changed_when: "'Deleting' in _dkms_drop.stdout"
+
+- name: Ensure all DKMS modules are built for the running kernel (dump make.log on failure)
+  block:
+    - name: Run dkms autoinstall for the running kernel
+      command: dkms autoinstall -k {{ ansible_kernel }}
+      changed_when: false
+  rescue:
+    - name: Locate mlnx-ofa_kernel DKMS make.log(s)
+      find:
+        paths: /var/lib/dkms/mlnx-ofa_kernel
+        patterns: make.log
+        recurse: yes
+      register: _ofa_makelogs
+    - name: Read mlnx-ofa_kernel make.log(s)
+      shell: "grep -nE 'error:|Error [0-9]' {{ item.path }} | head -40; echo '--- tail ---'; tail -n 60 {{ item.path }}"
+      loop: "{{ _ofa_makelogs.files }}"
+      register: _ofa_dump
+      changed_when: false
+      failed_when: false
+    # command stdout is not shown for ok tasks; debug is, so the compile errors land in the build log
+    - name: Dump mlnx-ofa_kernel make.log into the ansible output
+      debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ _ofa_dump.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+    - name: Re-fail after dumping the compile log
+      fail:
+        msg: "dkms autoinstall failed for kernel {{ ansible_kernel }}; see mlnx-ofa_kernel make.log above"
+
+# Without this gate a module that silently failed to build ships as a healthy image.
+- name: Verify mlnx-ofa_kernel DKMS module is installed for the running kernel
+  command: dkms status -m mlnx-ofa_kernel -k {{ ansible_kernel }}
+  register: _dkms_ofa
+  changed_when: false
+  failed_when: "'installed' not in _dkms_ofa.stdout"
+
+- name: Show mlnx-ofa_kernel DKMS status
+  debug:
+    msg: "{{ _dkms_ofa.stdout_lines }}"
+
+- name: Enable dkms service so modules rebuild on boot after a node-side kernel update
+  systemd:
+    name: dkms
+    enabled: yes
+  failed_when: false   # unit name may vary across releases; tolerate absence

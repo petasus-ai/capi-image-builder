@@ -18,6 +18,12 @@
   tasks:
     - include_role:
         name: node
+    # Must precede every role that builds a kernel module (cni's OVS datapath
+    # DKMS, doca, cuda, ddn, vast) or installs headers pinned to ansible_kernel:
+    # it reboots into the newest kernel so those modules are built against the
+    # kernel the image will actually boot.
+    - include_role:
+        name: kernel
     - include_role:
         name: providers
     - include_role:
@@ -56,6 +62,10 @@
     - include_role:
         name: vast
       when: accel_provider == "nvidia"
+    # Last before sysprep: every component must already be installed, and
+    # sysprep starts removing the traces the probes read.
+    - include_role:
+        name: manifest
     - include_role:
         name: sysprep
 

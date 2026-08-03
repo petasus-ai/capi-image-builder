@@ -50,9 +50,19 @@
     name: rsyslog
     state: stopped
 
+# `clean`, not `autoclean`: autoclean only drops .debs that can no longer be
+# downloaded — i.e. superseded versions — so the archive for every package this
+# build actually installed stayed in /var/cache/apt/archives. syft then
+# catalogued each of them a second time, from the .deb rather than from the dpkg
+# database, and the two entries carry different purls (pkg:deb/kubeadm@... vs
+# pkg:deb/ubuntu/kubeadm@...?distro=ubuntu-24.04) so no consumer of the SBOM can
+# merge them. clean empties archives/ and archives/partial/ outright.
+#
+# Safe to do here for every variant: sysprep is the last role in node.yml and
+# nothing after this point installs a package.
 - name: Remove apt package caches
   apt:
-    autoclean: yes
+    clean: yes
     autoremove: yes
     force_apt_get: yes
 

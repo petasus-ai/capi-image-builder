@@ -1,0 +1,33 @@
+---
+# `upgrade: full` (apt-get full-upgrade), not `safe`: an Ubuntu kernel bump
+# arrives as a new linux-image-<abi> package pulled in by the linux-image-virtual
+# meta package, and a plain upgrade never installs new packages. The setup role
+# has already unheld the kernel meta packages by the time this runs, so this
+# upgrade is free to move the kernel forward.
+- name: Full system upgrade (installs the newest kernel)
+  apt:
+    force_apt_get: True
+    upgrade: full
+    update_cache: yes
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# Register a FAMILY-SPECIFIC variable (see redhat.yml): a shared name is
+# clobbered by the other family's skipped-but-still-registered task.
+# Handles both naming schemes (linux-image-<abi> and linux-image-unsigned-<abi>,
+# depending on the cloud image) and drops unversioned meta packages such as
+# linux-image-virtual, which carry no ABI and would break the sort. What remains
+# is the `uname -r` form that ansible_kernel reports, so the two compare
+# directly. sort -V is required: lexically, 6.8.0-99 would beat 6.8.0-134.
+- name: Find the newest installed kernel
+  shell: >-
+    set -o pipefail;
+    dpkg-query -W -f='${Package}\n' 'linux-image-*' 2>/dev/null
+    | sed -E 's/^linux-image-(unsigned-)?//'
+    | grep -E '^[0-9]'
+    | sort -V | tail -1
+  args:
+    executable: /bin/bash
+  register: _newest_kernel_deb
+  changed_when: false
+  failed_when: false

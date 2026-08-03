@@ -1,34 +1,31 @@
+# On Ubuntu the mlx5_ib / RDMA in-tree modules ship in linux-modules-extra, not
+# the base linux-modules. openibd (restarted at the end of the role) fails to
+# load mlx5_ib without them. The kernel role just rebooted into the newest
+# kernel, so install the extras for THAT kernel — the RHEL path pins
+# kernel-modules-extra-<running> the same way.
 - name: Install linux-modules-extra for the running kernel
   apt:
     name: "linux-modules-extra-{{ ansible_kernel }}"
     state: present
     update_cache: yes
 
-- name: Download GPG key from BASE_URL
+- name: Ensure apt keyrings directory exists
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+# The published doca_keyring.gpg is already a binary OpenPGP keyring, so it is
+# what signed-by wants verbatim — the dearmor round-trip this replaces was a
+# no-op wrapped in three tasks of conditional retry logic, one of which had
+# ignore_errors set and so let a missing key through to surface later as an
+# unrelated apt failure.
+- name: Download DOCA repository keyring (binary OpenPGP keyring; do not dearmor)
   get_url:
-    url: "{{ doca_base_url }}/doca_keyring.gpg"
-    dest: "{{ _doca_key_tmp }}"
+    url: "{{ doca_base_url }}{{ _doca_keyring_file }}"
+    dest: "{{ _trusted_key_path }}"
     mode: '0644'
     force: yes
-  register: key_download
-
-- name: dearmor GPG key into /etc/apt/trusted.gpg.d (only when downloaded/changed)
-  shell: "curl {{ doca_base_url }}/doca_keyring.gpg | gpg --dearmor > {{ _trusted_key_path }}"
-  when: key_download.changed
-  args:
-    creates: "{{ _trusted_key_path }}"
-
-- name: Ensure trusted key exists (if file already present but download didn't run, noop)
-  stat:
-    path: "{{ _trusted_key_path }}"
-  register: trusted_key_stat
-
-- name: If trusted key missing but download didn't change, try dearmor (idempotency)
-  shell: "curl {{ doca_base_url }}/doca_keyring.gpg | gpg --dearmor > {{ _trusted_key_path }}"
-  when:
-    - not trusted_key_stat.stat.exists
-    - key_download is defined
-  ignore_errors: yes
 
 - name: Create apt source file for DOCA
   copy:

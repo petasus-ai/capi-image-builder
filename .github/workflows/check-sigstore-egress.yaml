@@ -1,0 +1,71 @@
+name: Check sigstore egress
+
+# Pre-flight for keyless image signing (provenance work). Keyless cosign needs
+# outbound access from the self-hosted runners to Fulcio (certificates), Rekor
+# (transparency log) and the TUF CDN (trust root) — none of which the existing
+# `cosign attach sbom` exercises, because attaching an SBOM is a plain OCI push
+# with no signing. Run this before committing to keyless so a firewall block
+# surfaces early instead of during implementation.
+#
+# Read-only and credential-free: no OIDC token, no signing, nothing is pushed.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Probe sigstore endpoints
+        run: |
+          set -u
+          rc=0
+          # What we are testing is reachability, not a specific status. curl
+          # reports 000 when the connection itself fails (DNS, proxy, firewall)
+          # — that is the only hard failure. Any HTTP response proves egress
+          # works, so an unexpected status only warns (endpoint paths drift).
+          probe() {
+            local name=$1 url=$2
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$url" 2>/dev/null) || code="000"
+            case "$code" in
+              200) echo "OK    ${name}: HTTP ${code}" ;;
+              000) echo "FAIL  ${name}: connection failed (DNS/proxy/firewall)  (${url})"; rc=1 ;;
+              *)   echo "WARN  ${name}: HTTP ${code} — reachable but unexpected status  (${url})" ;;
+            esac
+          }
+          probe "Fulcio (cert authority)"  "https://fulcio.sigstore.dev/api/v1/rootCert"
+          probe "Rekor (transparency log)" "https://rekor.sigstore.dev/api/v1/log"
+          # NOTE: the TUF repo has no /root.json — metadata is versioned
+          # (1.root.json, ...) plus timestamp.json. Probing /root.json 404s.
+          probe "TUF CDN (timestamp)"      "https://tuf-repo-cdn.sigstore.dev/timestamp.json"
+          probe "TUF CDN (root metadata)"  "https://tuf-repo-cdn.sigstore.dev/1.root.json"
+          exit $rc
+
+      - name: Initialize the sigstore trust root with pinned cosign
+        run: |
+          set -euo pipefail
+          # Same pin as scripts/sbom-pipeline.sh — cosign stays on 2.x because
+          # attach/download sbom (the portal's SBOM contract) is deprecated in 3.x.
+          COSIGN_VERSION="2.6.4"
+          case "$(uname -m)" in
+            x86_64) A=amd64 ;;
+            aarch64) A=arm64 ;;
+            *) echo "unsupported arch $(uname -m)"; exit 1 ;;
+          esac
+          BIN="$HOME/.cache/sbom-tools/bin"
+          mkdir -p "$BIN"; export PATH="$BIN:$PATH"
+          have=$(cosign version --json 2>/dev/null | jq -r '.gitVersion // empty' | sed 's/^v//' || true)
+          if [ "${have:-}" != "$COSIGN_VERSION" ]; then
+            curl -sSfL -o "$BIN/cosign" \
+              "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-${A}"
+            chmod +x "$BIN/cosign"
+          fi
+          cosign version
+          # Fetches and verifies the TUF trust root — the closest credential-free
+          # proxy for "keyless signing will work from this runner".
+          cosign initialize
+          echo "sigstore trust root initialized successfully on $(uname -m)"

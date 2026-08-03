@@ -14,9 +14,46 @@ on:
         description: "kubernetes version"
         type: string
         required: true
+      sbom_strict:
+        description: 'Fail the job when the SBOM stage fails (image push is unaffected)'
+        required: true
+        default: true
+        type: boolean
+      sbom_force:
+        description: 'Regenerate and overwrite the SBOM even if already published'
+        required: true
+        default: false
+        type: boolean
+      vuln_strict:
+        description: 'Fail the job when the vulnerability stage fails (image/SBOM unaffected)'
+        required: true
+        default: true
+        type: boolean
+      vuln_force:
+        description: 'Overwrite the vulnerability report regardless of its DB build date'
+        required: true
+        default: false
+        type: boolean
+      provenance_strict:
+        description: 'Fail the job when signing/attestation fails (image unaffected)'
+        required: true
+        default: true
+        type: boolean
+      provenance_force:
+        description: 'Re-sign and overwrite an already published signature sidecar'
+        required: true
+        default: false
+        type: boolean
   push:
     tags:
       - v*.*.*
+# id-token: write mints the OIDC token cosign exchanges with Fulcio for a
+# keyless signing certificate. Declaring permissions replaces the default token
+# scopes for every job in the file; contents: read is all these jobs need from
+# GITHUB_TOKEN (mirror pushes use the MY_TOKEN PAT, not GITHUB_TOKEN).
+permissions:
+  id-token: write
+  contents: read
 jobs:
   build-ubuntu-2404-amd64:
     if: ${{ github.event.inputs.os == 'ubuntu' || github.event.inputs.os == 'all' }}
@@ -78,7 +115,18 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+          COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # org.opencontainers.image.source is deliberately omitted: it would point at
+          # the private builder repo, so the portal would render a link that 404s for
+          # every external reader. .revision stays as opaque text for internal audit
+          # ("which build produced this image?") without advertising a destination.
+          sudo docker build \
+            --label "ai.petasus.components=${COMPONENTS}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
+            --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
+            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
           sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
@@ -90,6 +138,22 @@ jobs:
             quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}
+
+      - name: SBOM, vulnerability report and provenance
+        uses: ./.github/actions/supply-chain
+        with:
+          build-dir: output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: ubuntu-2404-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-amd64
+          mirror-token: ${{ secrets.MY_TOKEN }}
+          quay-username: ${{ secrets.QUAY_USER_NAME }}
+          quay-password: ${{ secrets.QUAY_PASSWORD }}
+          sbom-strict: ${{ github.event.inputs.sbom_strict }}
+          sbom-force: ${{ github.event.inputs.sbom_force }}
+          vuln-strict: ${{ github.event.inputs.vuln_strict }}
+          vuln-force: ${{ github.event.inputs.vuln_force }}
+          provenance-strict: ${{ github.event.inputs.provenance_strict }}
+          provenance-force: ${{ github.event.inputs.provenance_force }}
 
   build-rockylinux-9-amd64:
     if: ${{ github.event.inputs.os == 'rocky' || github.event.inputs.os == 'all' }}
@@ -151,7 +215,18 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # org.opencontainers.image.source is deliberately omitted: it would point at
+          # the private builder repo, so the portal would render a link that 404s for
+          # every external reader. .revision stays as opaque text for internal audit
+          # ("which build produced this image?") without advertising a destination.
+          sudo docker build \
+            --label "ai.petasus.components=${COMPONENTS}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-amd64" \
+            --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
+            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
           sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64
 
@@ -163,6 +238,22 @@ jobs:
           quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
+
+      - name: SBOM, vulnerability report and provenance
+        uses: ./.github/actions/supply-chain
+        with:
+          build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: rocky-9-uefi-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-amd64
+          mirror-token: ${{ secrets.MY_TOKEN }}
+          quay-username: ${{ secrets.QUAY_USER_NAME }}
+          quay-password: ${{ secrets.QUAY_PASSWORD }}
+          sbom-strict: ${{ github.event.inputs.sbom_strict }}
+          sbom-force: ${{ github.event.inputs.sbom_force }}
+          vuln-strict: ${{ github.event.inputs.vuln_strict }}
+          vuln-force: ${{ github.event.inputs.vuln_force }}
+          provenance-strict: ${{ github.event.inputs.provenance_strict }}
+          provenance-force: ${{ github.event.inputs.provenance_force }}
 
   build-ubuntu-2404-arm64:
     if: ${{ github.event.inputs.os == 'ubuntu' || github.event.inputs.os == 'all' }}
@@ -228,7 +319,18 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+          COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # org.opencontainers.image.source is deliberately omitted: it would point at
+          # the private builder repo, so the portal would render a link that 404s for
+          # every external reader. .revision stays as opaque text for internal audit
+          # ("which build produced this image?") without advertising a destination.
+          sudo docker build \
+            --label "ai.petasus.components=${COMPONENTS}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
+            --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
+            --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
           sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
@@ -240,6 +342,22 @@ jobs:
             quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}
+
+      - name: SBOM, vulnerability report and provenance
+        uses: ./.github/actions/supply-chain
+        with:
+          build-dir: output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: ubuntu-2404-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-aarch64
+          mirror-token: ${{ secrets.MY_TOKEN }}
+          quay-username: ${{ secrets.QUAY_USER_NAME }}
+          quay-password: ${{ secrets.QUAY_PASSWORD }}
+          sbom-strict: ${{ github.event.inputs.sbom_strict }}
+          sbom-force: ${{ github.event.inputs.sbom_force }}
+          vuln-strict: ${{ github.event.inputs.vuln_strict }}
+          vuln-force: ${{ github.event.inputs.vuln_force }}
+          provenance-strict: ${{ github.event.inputs.provenance_strict }}
+          provenance-force: ${{ github.event.inputs.provenance_force }}
 
   build-rockylinux-9-arm64:
     if: ${{ github.event.inputs.os == 'rocky' || github.event.inputs.os == 'all' }}
@@ -301,7 +419,18 @@ jobs:
 
       - name: Build & push container image
         run: |
-          sudo docker build --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          # org.opencontainers.image.source is deliberately omitted: it would point at
+          # the private builder repo, so the portal would render a link that 404s for
+          # every external reader. .revision stays as opaque text for internal audit
+          # ("which build produced this image?") without advertising a destination.
+          sudo docker build \
+            --label "ai.petasus.components=${COMPONENTS}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-aarch64" \
+            --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
+            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
           sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-aarch64
 
@@ -313,3 +442,19 @@ jobs:
             quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-amd64 --amend
           sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
           sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}
+
+      - name: SBOM, vulnerability report and provenance
+        uses: ./.github/actions/supply-chain
+        with:
+          build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: rocky-9-uefi-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-aarch64
+          mirror-token: ${{ secrets.MY_TOKEN }}
+          quay-username: ${{ secrets.QUAY_USER_NAME }}
+          quay-password: ${{ secrets.QUAY_PASSWORD }}
+          sbom-strict: ${{ github.event.inputs.sbom_strict }}
+          sbom-force: ${{ github.event.inputs.sbom_force }}
+          vuln-strict: ${{ github.event.inputs.vuln_strict }}
+          vuln-force: ${{ github.event.inputs.vuln_force }}
+          provenance-strict: ${{ github.event.inputs.provenance_strict }}
+          provenance-force: ${{ github.event.inputs.provenance_force }}

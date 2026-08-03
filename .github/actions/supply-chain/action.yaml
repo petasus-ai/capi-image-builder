@@ -1,0 +1,119 @@
+name: Supply chain
+description: >-
+  Generate and publish the SBOM, vulnerability report and signed SLSA
+  provenance for a container-disk image that has already been pushed.
+
+# Ten build jobs across main/doca_image/rebellions need the identical three
+# stages, so they live here rather than being copy-pasted thirty times.
+inputs:
+  build-dir:
+    description: >-
+      Packer output directory. Its basename is also the disk filename, because
+      packer.json sets output_directory and vm_name to the same
+      <build_name>-kube-<semver> string.
+    required: true
+  image-repo:
+    description: Image repository name without the registry namespace, e.g. ubuntu-2404-kube.
+    required: true
+  tag:
+    description: Tag that was pushed, e.g. v1.36.2-amd64.
+    required: true
+  mirror-token:
+    description: Write-access PAT for the public mirror repository.
+    required: true
+  quay-username:
+    description: Registry username, for cosign login.
+    required: true
+  quay-password:
+    description: Registry password, for cosign login.
+    required: true
+  # The strict toggles default to failing the job, and treat any value other
+  # than the literal 'false' as strict — a tag push supplies no workflow inputs
+  # at all, and an empty string must not silently downgrade to best-effort.
+  sbom-strict:
+    description: Fail the job when the SBOM stage fails (the image push is unaffected).
+    default: 'true'
+  sbom-force:
+    description: Regenerate and overwrite the SBOM even if already published.
+    default: 'false'
+  vuln-strict:
+    description: Fail the job when the vulnerability stage fails.
+    default: 'true'
+  vuln-force:
+    description: Overwrite the vulnerability report regardless of its DB build date.
+    default: 'false'
+  provenance-strict:
+    description: Fail the job when signing/attestation fails.
+    default: 'true'
+  provenance-force:
+    description: Re-sign and overwrite an already published signature sidecar.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Generate and publish SBOM
+      shell: bash
+      env:
+        SBOM_TOKEN: ${{ inputs.mirror-token }}
+        SBOM_FORCE: ${{ inputs.sbom-force }}
+        QUAY_USERNAME: ${{ inputs.quay-username }}
+        QUAY_PASSWORD: ${{ inputs.quay-password }}
+        STRICT: ${{ inputs.sbom-strict }}
+        BUILD_DIR: ${{ inputs.build-dir }}
+        IMAGE_REPO: ${{ inputs.image-repo }}
+        IMAGE_TAG: ${{ inputs.tag }}
+      run: |
+        disk="${BUILD_DIR}/$(basename "${BUILD_DIR}")"
+        if "${GITHUB_WORKSPACE}/scripts/sbom-pipeline.sh" run "$disk" "$IMAGE_REPO" "$IMAGE_TAG"; then
+          exit 0
+        fi
+        # continue-on-error is not honoured on steps inside a composite action,
+        # so the strict toggle is applied here. The `if` also keeps `set -e`
+        # from killing the step before this runs.
+        if [ "$STRICT" = "false" ]; then
+          echo "::warning::SBOM stage failed for ${IMAGE_REPO}:${IMAGE_TAG} (sbom-strict=false) — continuing"
+          exit 0
+        fi
+        echo "::error::SBOM stage failed for ${IMAGE_REPO}:${IMAGE_TAG}"
+        exit 1
+
+    - name: Scan and publish vulnerability report
+      shell: bash
+      env:
+        VULN_TOKEN: ${{ inputs.mirror-token }}
+        VULN_FORCE: ${{ inputs.vuln-force }}
+        STRICT: ${{ inputs.vuln-strict }}
+        IMAGE_REPO: ${{ inputs.image-repo }}
+        IMAGE_TAG: ${{ inputs.tag }}
+      run: |
+        if "${GITHUB_WORKSPACE}/scripts/vuln-pipeline.sh" run "$IMAGE_REPO" "$IMAGE_TAG"; then
+          exit 0
+        fi
+        if [ "$STRICT" = "false" ]; then
+          echo "::warning::vulnerability stage failed for ${IMAGE_REPO}:${IMAGE_TAG} (vuln-strict=false) — continuing"
+          exit 0
+        fi
+        echo "::error::vulnerability stage failed for ${IMAGE_REPO}:${IMAGE_TAG}"
+        exit 1
+
+    - name: Sign, attest and publish provenance
+      shell: bash
+      env:
+        PROV_TOKEN: ${{ inputs.mirror-token }}
+        PROV_FORCE: ${{ inputs.provenance-force }}
+        QUAY_USERNAME: ${{ inputs.quay-username }}
+        QUAY_PASSWORD: ${{ inputs.quay-password }}
+        STRICT: ${{ inputs.provenance-strict }}
+        IMAGE_REPO: ${{ inputs.image-repo }}
+        IMAGE_TAG: ${{ inputs.tag }}
+      run: |
+        if "${GITHUB_WORKSPACE}/scripts/provenance-pipeline.sh" run "$IMAGE_REPO" "$IMAGE_TAG"; then
+          exit 0
+        fi
+        if [ "$STRICT" = "false" ]; then
+          echo "::warning::provenance stage failed for ${IMAGE_REPO}:${IMAGE_TAG} (provenance-strict=false) — continuing"
+          exit 0
+        fi
+        echo "::error::provenance stage failed for ${IMAGE_REPO}:${IMAGE_TAG}"
+        exit 1
