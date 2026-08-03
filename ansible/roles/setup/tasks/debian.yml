@@ -49,8 +49,19 @@
   loop: "{{ extra_repos.split() }}"
   when: extra_repos != ""
 
-- name: Mask kernel dependencies
-  command: "apt-mark hold linux-headers-generic linux-headers-virtual linux-image-virtual linux-virtual"
+# The kernel meta packages used to be held here so the dist-upgrade below could
+# never move the kernel. Images now ship the newest kernel their distro offers
+# (see the kernel role), so any hold — ours or one inherited from the base cloud
+# image — has to go. showhold is filtered first because `apt-mark unhold` errors
+# out on a package that is not installed.
+- name: Unmask kernel dependencies so the dist-upgrade can install a newer kernel
+  shell: |
+    set -o pipefail
+    held=$(apt-mark showhold | grep -E '^linux-' || true)
+    if [ -n "$held" ]; then apt-mark unhold $held; fi
+  args:
+    executable: /bin/bash
+  changed_when: false
 
 - name: perform a dist-upgrade
   apt:

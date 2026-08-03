@@ -14,3 +14,6 @@
 ---
 extra_repos: ""
 remove_extra_repos: false
+
+# Purge kernels superseded by the one the image boots. See kernel_cleanup.yml.
+sysprep_remove_old_kernels: true
