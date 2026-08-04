@@ -1,0 +1,88 @@
+---
+# Bakes the upgrade-freeze policy of the accelerator golden-image runbook into
+# the image itself: every kernel-coupled package is pinned so a routine
+# `apt upgrade` / `dnf upgrade` on a running node can never touch it. The
+# operator escape hatch is deliberate and explicit — remove the pin file /
+# exclude line (documented in the runbook) — so an unattended patch run cannot
+# do by accident what only a rebuild is supported to do on purpose.
+#
+# Everything DOCA installs (mlnx-ofa_kernel, mlnx-ofed-kernel-dkms, the
+# nfsrdma/nvme DKMS modules), the prebuilt Lustre client and the
+# source-compiled VAST NFS client are kernel modules built against the exact
+# kernel the image boots; the build removes every other kernel, so there is no
+# fallback boot entry if an upgrade breaks the set.
+#
+# NVIDIA driver / CUDA packages are deliberately NOT on these lists: unlike
+# edgestack-image-builder, this builder's nvidia/cuda role only preps the
+# node (nouveau off, build deps) — the GPU driver arrives at runtime (GPU
+# Operator or a later host install), and pinning nvidia-* here would block
+# that legitimate install.
+#
+# Ported from edgestack-image-builder's freeze role; the glob lists follow §4
+# of the software-upgrade runbook minus the driver/CUDA families. Their union
+# is FREEZE_PKG_REGEX in scripts/supply-chain.conf — change them together.
+
+# Run a metadata-refreshing dry-run upgrade after pinning and fail the build if
+# any frozen package still shows up in the plan. Catches glob typos while a
+# build is cheap; costs one metadata fetch, which is cleaned up afterwards.
+freeze_verify: true
+
+# Debian/Ubuntu. dpkg globs, used verbatim in three places: the apt pin file
+# (Pin-Priority: -1 blocks new versions AND new package names, e.g. the next
+# kernel ABI), apt-mark hold expansion over installed packages (blocks
+# resolver-driven removal, and gives operators `apt-mark showhold`
+# visibility), and the dry-run guard.
+#
+# The plain-named linux-image / linux-image-generic equivs dummies the ddn
+# role installs match linux-image* — replacing one with the real metapackage
+# is what would chain kernel upgrades into every later `apt upgrade`.
+#
+# Toolchain: `gcc` (metapackage) rather than gcc*, which would also pin
+# gcc-N-base and hold back libgcc-s1/libstdc++6 security updates.
+freeze_apt_globs:
+  # kernel and kernel-space
+  - linux-image*
+  - linux-headers*
+  - linux-modules*
+  - linux-generic*
+  # DOCA / OFED and RDMA userspace — rdma-core/libibverbs also exist in the
+  # distro repos, where a plain OS patch would replace the OFED-built ones
+  - doca-*
+  - mlnx-*
+  - ofed-*
+  - rdma-core*
+  - libibverbs*
+  - librdmacm*
+  - ibverbs-*
+  - infiniband-diags
+  - perftest
+  - ucx*
+  # storage clients
+  - lustre*
+  - vastnfs*
+  # toolchain future DKMS rebuilds depend on
+  - dkms
+  - make
+  - gcc
+  - libelf-dev
+
+# EL. rpm globs for the dnf.conf exclude= line (which hides matches from every
+# transaction, install and remove included — one reason this role must run
+# after sysprep's kernel cleanup) and the dry-run guard.
+freeze_dnf_globs:
+  - kernel*
+  - doca-*
+  - mlnx-*
+  - ofed-*
+  - rdma-core
+  - libibverbs*
+  - librdmacm*
+  - infiniband-diags
+  - perftest
+  - ucx*
+  - lustre*
+  - vastnfs*
+  - dkms
+  - gcc*
+  - make
+  - elfutils-libelf-devel

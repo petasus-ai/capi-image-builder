@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+#
+# In-place upgrade freeze for the accelerator golden image. Every name below
+# is a kernel module (DOCA/OFED, Lustre, VAST NFS), a package version-locked
+# to that set, or the toolchain future DKMS rebuilds depend on. Pin-Priority
+# -1 removes their install candidate: apt will neither upgrade them nor pull
+# in the next kernel ABI's packages. The installed versions keep working
+# untouched.
+#
+# The supported way to move any of these is rebuilding the golden image and
+# redeploying the node — see the software-upgrade runbook. To override in an
+# emergency anyway, delete this file and unhold (`apt-mark showhold`), on a
+# snapshot you can restore.
+
+Package: {{ freeze_apt_globs | join(' ') }}
+Pin: release *
+Pin-Priority: -1

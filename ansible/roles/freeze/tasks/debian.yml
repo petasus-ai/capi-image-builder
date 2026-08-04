@@ -1,0 +1,72 @@
+---
+# Two independent layers, matching the runbook's model:
+#   pin file  — Pin-Priority: -1 leaves frozen names without an install
+#               candidate, which blocks upgrades AND the next kernel ABI's
+#               brand-new package names, which a hold cannot cover.
+#   apt-mark  — holds every INSTALLED match, so a full-upgrade resolver run
+#               errors out instead of quietly removing a pinned package, and
+#               operators see the policy in `apt-mark showhold`.
+
+- name: Install the freeze pin file
+  template:
+    src: apt-freeze.j2
+    dest: /etc/apt/preferences.d/90-capi-freeze
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Hold every installed package on the freeze list
+  shell: |
+    set -o pipefail
+    for g in {{ freeze_apt_globs | map('quote') | join(' ') }}; do
+      dpkg-query -W -f='${Package}\n' "$g" 2>/dev/null || true
+    done | sort -u | xargs -r apt-mark hold
+  args:
+    executable: /bin/bash
+  register: _freeze_holds
+  changed_when: "'set on hold' in _freeze_holds.stdout"
+
+- name: Verify the running kernel's packages are held
+  shell: |
+    set -o pipefail
+    apt-mark showhold | grep -F "{{ ansible_kernel }}"
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+# sysprep already wiped the apt lists, so the dry-run needs a fresh fetch —
+# dropped again below to hand sysprep's cleaned state back unchanged.
+- name: Refresh apt metadata for the freeze dry-run
+  command: apt-get update
+  register: _freeze_apt_update
+  until: _freeze_apt_update.rc == 0
+  retries: 3
+  delay: 10
+  when: freeze_verify | bool
+
+- name: Fail if a dry-run upgrade would touch a frozen package
+  shell: |
+    set -o pipefail
+    plan=$( { apt-get -s upgrade; apt-get -s full-upgrade; } \
+      | awk '/^(Inst|Remv) /{print $2}' | sort -u )
+    bad=""
+    for p in $plan; do
+      case "$p" in
+        {{ freeze_apt_globs | join('|') }}) bad="$bad $p" ;;
+      esac
+    done
+    if [ -n "$bad" ]; then
+      echo "frozen packages would change:$bad" >&2
+      exit 1
+    fi
+    echo "upgrade plan clean: $(echo $plan | wc -w) candidate(s), none frozen"
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: freeze_verify | bool
+
+- name: Drop the apt metadata fetched for the dry-run
+  shell: |
+    apt-get clean
+    find /var/lib/apt/lists -mindepth 1 -delete
+  when: freeze_verify | bool

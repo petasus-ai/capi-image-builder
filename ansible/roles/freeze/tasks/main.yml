@@ -1,0 +1,12 @@
+---
+# Must stay the LAST role in node.yml. Everything before it still moves
+# packages: the install roles obviously, and sysprep's kernel cleanup removes
+# superseded kernels — which the freeze itself would veto (apt refuses -y
+# changes to held packages; dnf exclude= hides packages from `remove` too).
+# Running last also means the hold list captures exactly the surviving
+# kernel's packages, not the ones cleanup is about to delete.
+- import_tasks: debian.yml
+  when: ansible_os_family == "Debian"
+
+- import_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"

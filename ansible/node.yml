@@ -68,6 +68,12 @@
         name: manifest
     - include_role:
         name: sysprep
+    # Must stay last: bakes the upgrade freeze (apt pins/holds, dnf excludes)
+    # into accelerator images, and once applied, removing frozen packages
+    # fails — sysprep's kernel cleanup included. See roles/freeze.
+    - include_role:
+        name: freeze
+      when: accel_provider == "nvidia"
 
   environment:
     http_proxy: "{{ http_proxy | default('') }}"
