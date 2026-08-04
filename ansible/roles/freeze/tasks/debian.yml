@@ -16,11 +16,20 @@
     mode: "0644"
 
 - name: Hold every installed package on the freeze list
+  # One unfiltered dpkg-query, then match in the shell: passing the globs to
+  # dpkg-query also returns names merely KNOWN to the status db — purged old
+  # kernels, virtual names satisfied via Provides (nvidia-driver,
+  # linux-headers-arm64, ...) — which apt-mark hold rejects with "neither
+  # installed nor candidate". Status-Status keeps only real installs.
   shell: |
     set -o pipefail
-    for g in {{ freeze_apt_globs | map('quote') | join(' ') }}; do
-      dpkg-query -W -f='${Package}\n' "$g" 2>/dev/null || true
-    done | sort -u | xargs -r apt-mark hold
+    dpkg-query -W -f='${Package}\t${db:Status-Status}\n' \
+      | awk -F'\t' '$2 == "installed" {print $1}' \
+      | while read -r p; do
+          case "$p" in
+            {{ freeze_apt_globs | join('|') }}) echo "$p" ;;
+          esac
+        done | sort -u | xargs -r apt-mark hold
   args:
     executable: /bin/bash
   register: _freeze_holds
