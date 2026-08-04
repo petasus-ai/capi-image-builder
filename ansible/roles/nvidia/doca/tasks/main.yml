@@ -59,6 +59,32 @@
 - name: Restart openibd
   command: /etc/init.d/openibd restart
 
+# openibd unloads the OFED stack before loading it, and aborts when sunrpc is
+# already pinned -- leaving Mellanox VFs bound to no driver, so their netdevs
+# vanish. It is a boot race, so it hits only some nodes of a cluster; see
+# files/mlx-modules-ensure.sh for the full failure mode.
+- name: Install Mellanox module reload script
+  copy:
+    src: mlx-modules-ensure.sh
+    dest: /usr/local/sbin/mlx-modules-ensure.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install mlx-modules-ensure systemd unit
+  copy:
+    src: mlx-modules-ensure.service
+    dest: /etc/systemd/system/mlx-modules-ensure.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable mlx-modules-ensure unit
+  systemd:
+    name: mlx-modules-ensure
+    enabled: yes
+    daemon_reload: yes
+
 # DOCA-OFED >= 3.4 leaves absolute symlinks under /usr/src/ofa_kernel that
 # dangle inside the GPU operator driver container (useHostMofed) and break
 # the nvidia-peermem build. Normalize them to relative links on every boot;

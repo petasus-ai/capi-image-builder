@@ -1,0 +1,17 @@
+[Unit]
+Description=Load the Mellanox module stack when openibd left devices unbound
+Documentation=file:/usr/local/sbin/mlx-modules-ensure.sh
+# openibd unloads the OFED stack before loading it and aborts when sunrpc is
+# still pinned, leaving Mellanox VFs with no driver. Ordered after it (with no
+# dependency, so this runs whether it succeeded or failed) and before kubelet,
+# so the node always presents its NICs to workloads.
+After=openibd.service
+Before=kubelet.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/mlx-modules-ensure.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
