@@ -61,6 +61,16 @@ MAX_VULN_BYTES=$((50 * 1024 * 1024))
 # "upgrade available now" from "Red Hat fixed it, this distro has not shipped
 # it", and grades an already-fully-upgraded image down for an impossible
 # upgrade. null = not judged (non-distro package, or the lookup was skipped).
+#
+# artifact.vendored marks a package whose every location sits under a `_vendor/`
+# directory — a copy bundled inside another package rather than an install of
+# its own. python3-setuptools ships seven of these (jaraco.context, wheel,
+# more-itertools, ...), and their advisories read as ordinary pip findings, so
+# the portal counted them as actionable. They are not: apt has no such package,
+# and only a new setuptools release changes what it vendors. A stale bundled
+# copy alongside a current real one (jaraco.context 5.3.0 in _vendor next to
+# 6.0.1 in dist-packages) is exactly the case that must not be "fix it" — hence
+# ALL locations must be vendored, not any.
 VULN_PROJECT='{
   descriptor: {
     name: .descriptor.name, version: .descriptor.version,
@@ -82,7 +92,9 @@ VULN_PROJECT='{
       cvss: (.vulnerability.cvss // []), urls: (.vulnerability.urls // []),
       dataSource: .vulnerability.dataSource
     },
-    artifact: {name: .artifact.name, version: .artifact.version, type: .artifact.type}
+    artifact: {name: .artifact.name, version: .artifact.version, type: .artifact.type,
+      vendored: ((((.artifact.locations // []) | length) > 0)
+                 and ((.artifact.locations // []) | all(.path | test("/_vendor/"))))}
   }]
 }'
 TOOLS_DIR="${GRYPE_TOOLS_DIR:-$HOME/.cache/sbom-tools}"
