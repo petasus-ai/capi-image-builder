@@ -71,6 +71,17 @@ MAX_VULN_BYTES=$((50 * 1024 * 1024))
 # copy alongside a current real one (jaraco.context 5.3.0 in _vendor next to
 # 6.0.1 in dist-packages) is exactly the case that must not be "fix it" — hence
 # ALL locations must be vendored, not any.
+#
+# artifact.frozen marks a package the image's upgrade-freeze policy pins in
+# place (FREEZE_PKG_REGEX, supply-chain.conf): kernel, accelerator stack, and
+# everything version-locked to them, matching what ansible/roles/freeze bakes
+# into the image. A fix version may exist in the repos, but applying it in
+# place is unsupported — the remediation is rebuilding the golden image — so
+# the portal must not count these as patchable. The policy applies only to
+# images carrying the accelerator stack, detected from the SBOM itself
+# ($isfrozen, FREEZE_MARKER_REGEX) rather than the tag: the mirror's daily
+# re-scan walks SBOMs by digest and has no tag to consult. Builders with no
+# freeze policy leave the regexes unset and every finding stays frozen:false.
 VULN_PROJECT='{
   descriptor: {
     name: .descriptor.name, version: .descriptor.version,
@@ -94,7 +105,8 @@ VULN_PROJECT='{
     },
     artifact: {name: .artifact.name, version: .artifact.version, type: .artifact.type,
       vendored: ((((.artifact.locations // []) | length) > 0)
-                 and ((.artifact.locations // []) | all(.path | test("/_vendor/"))))}
+                 and ((.artifact.locations // []) | all(.path | test("/_vendor/")))),
+      frozen: (if $isfrozen then (.artifact.name | test($frz)) else false end)}
   }]
 }'
 TOOLS_DIR="${GRYPE_TOOLS_DIR:-$HOME/.cache/sbom-tools}"
@@ -193,8 +205,19 @@ cmd_run() {
   avail=$("$(dirname "${BASH_SOURCE[0]}")/distro-fix-check.sh" "$repo" "$raw" || echo '{}')
   echo "$avail" | jq -e 'type == "object"' >/dev/null 2>&1 || avail='{}'
 
+  # Is this image under the upgrade-freeze policy? Judged from the SBOM (see
+  # VULN_PROJECT). Fails soft to false — the report then simply predates the
+  # frozen field's semantics, same as an unset FREEZE_MARKER_REGEX.
+  local isfrozen=false
+  if [[ -n "${FREEZE_MARKER_REGEX:-}" ]]; then
+    isfrozen=$(jq --arg re "$FREEZE_MARKER_REGEX" \
+      '[.packages[]?.name // empty] | any(test($re))' "$sbom" 2>/dev/null || echo false)
+    [[ "$isfrozen" == "true" ]] || isfrozen=false
+  fi
+
   # Project to the portal contract (see VULN_PROJECT) before publishing.
-  jq -c --argjson av "$avail" "$VULN_PROJECT" "$raw" > "$vuln"
+  jq -c --argjson av "$avail" --argjson isfrozen "$isfrozen" \
+    --arg frz "${FREEZE_PKG_REGEX:-^$}" "$VULN_PROJECT" "$raw" > "$vuln"
 
   local size count built raw_size
   raw_size=$(wc -c < "$raw")
@@ -204,6 +227,7 @@ cmd_run() {
   log "vuln report: ${count} matches, DB built ${built:-unknown}, ${size} bytes (raw ${raw_size})"
   log "severity: $(jq -rc '[.matches[].vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add // {}' "$vuln")"
   log "fixed-but-not-yet-in-this-distro: $(jq '[.matches[] | select(.vulnerability.fix.availableInDistro == false)] | length' "$vuln")"
+  log "frozen by upgrade policy (rebuild to fix): $(jq '[.matches[] | select(.artifact.frozen)] | length' "$vuln")"
   [[ "$size" -le "$MAX_VULN_BYTES" ]] || die "report is ${size} bytes (>${MAX_VULN_BYTES}) — size policy needs renegotiation"
 
   publish "$vuln" "$WORK/mirror" "$vuln_rel" "$repo" "$hex" "$built" "$count"

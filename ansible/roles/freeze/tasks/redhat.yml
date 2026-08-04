@@ -1,0 +1,56 @@
+---
+# One layer suffices on EL: a dnf.conf exclude= glob hides frozen names from
+# every transaction, installed or not — the same mechanism the runbook applies
+# by hand, so `grep '^exclude=' /etc/dnf/dnf.conf` stays the operator's
+# visibility command. Side effect worth knowing: an intentional install of a
+# frozen name needs `--disableexcludes=main`.
+#
+# Everything here is CLI, not the dnf module — EL8's dnf module needs
+# platform-python bindings the build interpreter lacks (see
+# roles/kernel/tasks/el.yml).
+
+- name: Add the freeze exclude list to dnf.conf
+  lineinfile:
+    path: /etc/dnf/dnf.conf
+    regexp: '^exclude='
+    line: "exclude={{ freeze_dnf_globs | join(' ') }}"
+    insertafter: '^\[main\]'
+
+- name: Verify the running kernel is hidden from dnf
+  # -C forbids metadata fetches; the exclude must hide the kernel package from
+  # dnf's view entirely, so a hit (rc 0) means the exclude line is not working.
+  command: dnf -q -C list --installed kernel-core
+  register: _freeze_kernel_visible
+  failed_when: _freeze_kernel_visible.rc == 0
+  changed_when: false
+
+# `dnf list --upgrades` pulls fresh metadata (cleaned again below) and applies
+# exclude= itself, so any frozen name in its output means the glob missed it.
+- name: Fail if a dry-run upgrade would offer a frozen package
+  shell: |
+    set -o pipefail
+    # dnf wraps long names onto their own line (NF==1); the version+repo
+    # continuation (NF==2) and the "Available Upgrades" header are skipped.
+    plan=$(dnf -q list --upgrades 2>/dev/null \
+      | awk '$1 ~ /\./ && (NF==1 || NF>=3) {sub(/\.[^.]*$/, "", $1); print $1}' | sort -u)
+    bad=""
+    for p in $plan; do
+      case "$p" in
+        {{ freeze_dnf_globs | join('|') }}) bad="$bad $p" ;;
+      esac
+    done
+    if [ -n "$bad" ]; then
+      echo "frozen packages would change:$bad" >&2
+      exit 1
+    fi
+    echo "upgrade plan clean: $(echo $plan | wc -w) candidate(s), none frozen"
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when: freeze_verify | bool
+
+- name: Drop the dnf metadata and logs fetched for the dry-run
+  shell: |
+    dnf -q clean all
+    rm -f /var/log/dnf* /var/log/hawkey*
+  when: freeze_verify | bool
