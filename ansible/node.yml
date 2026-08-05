@@ -20,8 +20,10 @@
         name: node
     # Must precede every role that builds a kernel module (cni's OVS datapath
     # DKMS, doca, cuda, ddn, vast) or installs headers pinned to ansible_kernel:
-    # it reboots into the newest kernel so those modules are built against the
-    # kernel the image will actually boot.
+    # it asserts the guest is already running the newest kernel, so those
+    # modules are built against the kernel the image will actually boot. The
+    # upgrade and reboot that make that true happen before this playbook, in
+    # packer's scripts/upgrade-kernel.sh provisioner.
     - include_role:
         name: kernel
     - include_role:

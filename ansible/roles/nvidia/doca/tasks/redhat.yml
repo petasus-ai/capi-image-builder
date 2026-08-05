@@ -16,11 +16,11 @@
 # the mlnx-ofa_kernel RPM directly -- breaks on kernels newer than NVIDIA's
 # qualified list: the unused mlx5_dpll module fails to compile (backported
 # dpll_ffo_param signatures) and takes the whole build down with it. Now that the
-# kernel role installs the newest distro kernel on every build, that is the
-# common case rather than the exception.
+# build installs the newest distro kernel every time, that is the common case
+# rather than the exception.
 #
-# The kernel role has already rebooted into the newest kernel by the time this
-# runs, so the running kernel is the newest and the pins below match it. That is
+# The guest has already rebooted into the newest kernel by the time this runs
+# (scripts/upgrade-kernel.sh, before the playbook), so the running kernel is the newest and the pins below match it. That is
 # also what keeps OFA, lustre and vastnfs on one kernel.
 # kernel-devel-matched satisfies dkms' rich dependency
 # "(kernel-devel-matched if kernel-core)" (https://src.fedoraproject.org/rpms/dkms).

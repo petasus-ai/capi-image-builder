@@ -1,46 +1,18 @@
 ---
-# Kernel packages on EL are install-only: a full upgrade lays the newest kernel
-# down alongside the running one without switching to it. main.yml reboots.
-#
-# The setup role's `yum update` no longer excludes kernel*/kmod*, so this pass is
-# usually a no-op; it stays because this role owns the "newest kernel is
-# installed and running" guarantee and must not depend on setup's ordering.
-- name: Full system upgrade
-  yum:
-    name: '*'
-    state: latest
-    lock_timeout: 60
+# Read-only. The upgrade that installs a newer kernel runs before this playbook,
+# in scripts/upgrade-kernel.sh — see main.yml for why it cannot run here.
 
 # The kernel package layout differs by EL generation:
 #   EL7 / Amazon Linux 2 -- a single monolithic `kernel` package
 #   EL8                  -- kernel + kernel-core + kernel-modules
 #   EL9+                 -- the above plus kernel-modules-core
-# Requesting a package the distro does not ship fails the build with "Unable to
-# find a match", so the split has to be detected rather than assumed.
+# Only the package the version is read from matters here, so the split is
+# detected rather than assumed.
 - name: Detect whether this EL generation splits the kernel package
   set_fact:
     _el_kernel_split: >-
       {{ ansible_distribution != "Amazon"
          and ansible_distribution_major_version | int >= 8 }}
-
-# Belt-and-suspenders: install the newest kernel by name so all of its
-# install-only subpackages are pulled at the newest available version regardless
-# of how the upgrade above treats install-only packages. Idempotent when already
-# newest.
-- name: Ensure the newest kernel is installed (monolithic kernel package)
-  yum:
-    name: kernel
-    state: latest
-    lock_timeout: 60
-  when: not (_el_kernel_split | bool)
-
-- name: Ensure the newest kernel is installed (split kernel packages)
-  yum:
-    name: "{{ ['kernel', 'kernel-core', 'kernel-modules']
-              + (['kernel-modules-core'] if ansible_distribution_major_version | int >= 9 else []) }}"
-    state: latest
-    lock_timeout: 60
-  when: _el_kernel_split | bool
 
 # Register a FAMILY-SPECIFIC variable, never a shared one: main.yml imports both
 # redhat.yml and debian.yml, and a skipped task still runs its `register`,

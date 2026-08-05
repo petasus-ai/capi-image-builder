@@ -55,7 +55,8 @@
 - import_tasks: rpm_repos.yml
 
 # No kernel*/kmod* exclusion: images ship the newest kernel their distro offers.
-# The kernel role reboots into it before any role builds a kernel module.
+# The guest has already rebooted into it before this playbook started, and the
+# kernel role asserts as much before any role builds a kernel module.
 - name: perform a yum update
   yum:
     name: '*'

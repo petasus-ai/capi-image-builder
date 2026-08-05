@@ -1,21 +1,25 @@
 ---
-# Bring the guest onto the newest kernel its distro offers, and boot into it,
-# before anything builds kernel modules.
+# Verify the guest booted the newest kernel its distro offers, before anything
+# builds a kernel module.
+#
+# The upgrade and the reboot happen BEFORE this playbook runs, in packer's
+# scripts/upgrade-kernel.sh and the reboot provisioner beside it. They cannot
+# happen here: packer's ansible provisioner proxies every task through packer's
+# own SSH connection to the guest, and a reboot kills that connection
+# mid-playbook. The proxy keeps answering keepalives afterwards, so the task
+# ansible has in flight never returns — and because wait_for_connection only
+# checks its timeout between attempts, an attempt that never returns means the
+# build hangs indefinitely instead of failing. That is not a theory; it is what
+# this role used to do.
 #
 # Every kmod build in this playbook (cni's OVS datapath DKMS, DOCA/OFED, NVIDIA,
 # DDN lustre, VAST) targets the RUNNING kernel, and several roles install headers
-# pinned to `ansible_kernel`. A full upgrade installs a newer kernel but leaves
-# the old one running, so without the reboot below an image would ship a kernel
-# its modules were never built against — grub would boot the new kernel while the
-# modules belong to the old one.
-#
-# This runs for every build, not only accelerator ones: a golden image whose
-# kernel varies by whether an accelerator was selected is a support liability.
-# The reboot is skipped when the upgrade installed nothing newer, which is the
-# common case now that the qemu var files track the distros' latest cloud images.
+# pinned to `ansible_kernel`. sysprep asserts the same invariant, but only at the
+# very end — this one fails the build before a single module is built against a
+# kernel the image will not boot.
 #
 # Immutable/atomic families (Flatcar, Photon) fall through both imports and end
-# up with an empty result, so nothing is upgraded and no reboot is attempted.
+# up with an empty result, which is treated as nothing to check.
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat" or ansible_os_family == "Rocky"
@@ -26,47 +30,30 @@
 # Coalesce the family-specific results. redhat.yml and debian.yml deliberately
 # register different variables: the skipped family's task still runs its
 # `register` and would clobber a shared name with a stdout-less skip result
-# (that is exactly what leaves EL builds with newest=empty -> reboot skipped ->
-# the newer kernel then deleted by sysprep). The skipped family's variable has
-# no .stdout, so `| default(...)` falls through to the one that actually ran.
+# (that is exactly what leaves EL builds with newest=empty -> check skipped).
+# The skipped family's variable has no .stdout, so `| default(...)` falls
+# through to the one that actually ran.
 - name: Determine the newest installed kernel
   set_fact:
     _newest_kernel_str: >-
       {{ (_newest_kernel_el.stdout | default(_newest_kernel_deb.stdout | default('')))
          | trim }}
 
-- name: Decide whether a reboot is needed
-  set_fact:
-    _kernel_reboot_needed: >-
-      {{ (_newest_kernel_str | length > 0)
-         and (_newest_kernel_str != ansible_kernel) }}
-
 - name: Report the kernel state
   debug:
     msg: >-
       running={{ ansible_kernel }}
       newest={{ _newest_kernel_str | default('n/a') }}
-      reboot={{ _kernel_reboot_needed }}
 
-# Fire-and-forget: the ansible reboot module misfires through packer's ansible
-# SSH proxy when the connection drops; wait_for_connection tolerates the proxy
-# re-connecting. The keepalive options packer passes via ANSIBLE_SSH_ARGS keep
-# the control connection from being torn down mid-reboot.
-- name: Reboot into the freshly-installed kernel
-  shell: "sleep 3 && systemctl reboot"
-  async: 1
-  poll: 0
-  ignore_errors: true
-  when: _kernel_reboot_needed | bool
-
-- name: Wait for the machine to come back after the reboot
-  wait_for_connection:
-    delay: 45
-    timeout: 1200
-  when: _kernel_reboot_needed | bool
-
-# Refreshes ansible_kernel so every later role pins headers/devel packages to the
-# kernel the image will actually boot.
-- name: Re-gather facts after the reboot
-  setup:
-  when: _kernel_reboot_needed | bool
+- name: Fail when the running kernel is not the newest installed
+  assert:
+    that:
+      - _newest_kernel_str == ansible_kernel
+    fail_msg: >-
+      running kernel {{ ansible_kernel }} is not the newest installed
+      ({{ _newest_kernel_str }}). The pre-playbook kernel upgrade
+      (scripts/upgrade-kernel.sh) or the reboot provisioner after it did not
+      take effect, so every kernel module built from here on would target a
+      kernel this image does not boot.
+    quiet: true
+  when: _newest_kernel_str | length > 0

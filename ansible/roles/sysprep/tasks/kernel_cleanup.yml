@@ -1,9 +1,9 @@
 ---
 # Remove kernels superseded by the one the image boots.
 #
-# The `kernel` role installs the newest kernel and reboots into it, but kernel
-# packages are install-only: the previous kernel stays behind. The existing
-# autoremove steps do not clear it — on Debian the base image's kernel is marked
+# The build installs the newest kernel and reboots into it before the playbook
+# starts (scripts/upgrade-kernel.sh), but kernel packages are install-only: the
+# previous kernel stays behind. The existing autoremove steps do not clear it — on Debian the base image's kernel is marked
 # manual, and on EL install-only packages are governed by installonly_limit
 # rather than autoremove — so it has to be removed explicitly.
 #
@@ -61,9 +61,9 @@
       {{ _kernels_to_remove | select('search', ansible_kernel) | list }}
     quiet: true
 
-# Safety net against a skipped/failed reboot in the kernel role. This task
-# removes every kernel other than the running one, on the premise that the image
-# booted the newest. If it did not — a newer kernel is installed but not
+# Safety net against a skipped/failed pre-playbook reboot. This task removes
+# every kernel other than the running one, on the premise that the image booted
+# the newest. If it did not — a newer kernel is installed but not
 # running — that removal would delete the NEWER kernel and ship the old one.
 # Abort loudly instead: the running kernel must be the newest installed.
 - name: Find the newest installed kernel
@@ -92,7 +92,7 @@
       - _newest_installed_kernel.stdout | trim == ansible_kernel
     fail_msg: >-
       running kernel {{ ansible_kernel }} is not the newest installed
-      ({{ _newest_installed_kernel.stdout | trim }}) — the kernel role's reboot
+      ({{ _newest_installed_kernel.stdout | trim }}) — the pre-playbook reboot
       did not take effect. Aborting so the newer kernel is not deleted.
     quiet: true
 

@@ -1,17 +1,7 @@
 ---
-# `upgrade: full` (apt-get full-upgrade), not `safe`: an Ubuntu kernel bump
-# arrives as a new linux-image-<abi> package pulled in by the linux-image-virtual
-# meta package, and a plain upgrade never installs new packages. The setup role
-# has already unheld the kernel meta packages by the time this runs, so this
-# upgrade is free to move the kernel forward.
-- name: Full system upgrade (installs the newest kernel)
-  apt:
-    force_apt_get: True
-    upgrade: full
-    update_cache: yes
-  environment:
-    DEBIAN_FRONTEND: noninteractive
-
+# Read-only. The upgrade that installs a newer kernel runs before this playbook,
+# in scripts/upgrade-kernel.sh — see main.yml for why it cannot run here.
+#
 # Register a FAMILY-SPECIFIC variable (see redhat.yml): a shared name is
 # clobbered by the other family's skipped-but-still-registered task.
 # Handles both naming schemes (linux-image-<abi> and linux-image-unsigned-<abi>,

@@ -123,6 +123,32 @@
       ]
     },
     {
+      "type": "shell",
+      "except": ["flatcar"],
+      "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S bash '{{ .Path }}'",
+      "scripts": [
+        "scripts/upgrade-kernel.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "except": ["flatcar"],
+      "expect_disconnect": true,
+      "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
+      "inline": [
+        "if [ -e /run/kernel-reboot-required ]; then systemctl reboot; fi"
+      ]
+    },
+    {
+      "type": "shell",
+      "except": ["flatcar"],
+      "pause_before": "60s",
+      "max_retries": "20",
+      "inline": [
+        "uname -r"
+      ]
+    },
+    {
       "ansible_env_vars": [
         "ANSIBLE_SSH_ARGS={{user `existing_ansible_ssh_args`}} -o IdentitiesOnly=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4"
       ],

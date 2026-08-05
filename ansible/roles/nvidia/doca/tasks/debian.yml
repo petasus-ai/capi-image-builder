@@ -1,7 +1,7 @@
 # On Ubuntu the mlx5_ib / RDMA in-tree modules ship in linux-modules-extra, not
 # the base linux-modules. openibd (restarted at the end of the role) fails to
-# load mlx5_ib without them. The kernel role just rebooted into the newest
-# kernel, so install the extras for THAT kernel — the RHEL path pins
+# load mlx5_ib without them. The build already rebooted into the newest kernel
+# before the playbook started, so install the extras for THAT kernel — the RHEL path pins
 # kernel-modules-extra-<running> the same way.
 - name: Install linux-modules-extra for the running kernel
   apt:
