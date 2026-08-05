@@ -14,15 +14,20 @@
 # is lost depends on when sunrpc happens to be pinned, so it hits some nodes of
 # a cluster and not others.
 #
-# Reload the stack for any Mellanox device that ended up driverless. udev then
-# renames the netdev and netplan reapplies its addresses exactly as it would on
-# a clean boot, so this is a no-op on nodes where openibd succeeded.
+# Put the stack back for any Mellanox device that ended up driverless, and judge
+# the result by the netdev rather than by the driver binding, since the netdev is
+# what everything downstream consumes. Exits non-zero if a device is still
+# without one, so a node that could not be repaired shows up in systemctl
+# --failed instead of looking healthy. No-op on nodes where openibd succeeded.
+#
+# Scope: only devices that are bound to no driver at all. A device that is bound
+# yet exposes no interface is a different fault, and repairing it would mean
+# unbinding a live driver -- out of scope here.
 set -u
 
-log() {
-    logger -t mlx-modules-ensure "$*" 2>/dev/null || true
-    echo "mlx-modules-ensure: $*"
-}
+# systemd captures stdout into the journal under this unit, so there is no need
+# to also call logger -- that only duplicates every line.
+log() { echo "mlx-modules-ensure: $*"; }
 
 shopt -s nullglob
 
@@ -41,16 +46,74 @@ fi
 log "Mellanox devices with no driver bound: ${driverless[*]}"
 
 for mod in mlx5_core mlx5_ib ib_umad ib_uverbs rdma_ucm; do
-    if modprobe "$mod" 2>/dev/null; then
-        log "loaded $mod"
+    if err=$(modprobe "$mod" 2>&1); then
+        # modprobe is a no-op, and still exits 0, when the module is already
+        # resident -- so this says the module is present, not that it was loaded.
+        log "$mod present"
+    else
+        # Secure Boot rejecting an unsigned module, a DKMS build missing after a
+        # kernel upgrade and a version mismatch all report themselves here.
+        # Without this the failure is indistinguishable from "already loaded".
+        log "modprobe $mod failed: ${err:-no output}"
     fi
 done
 
+# modprobe is a no-op when the module is already loaded, which leaves a device
+# that lost its binding on its own -- a failed probe, a partial openibd stop, an
+# earlier manual unbind -- exactly as it was. Ask the driver to take it.
 for pci in "${driverless[@]}"; do
-    driver_link="/sys/bus/pci/devices/$pci/driver"
-    if [ -e "$driver_link" ]; then
-        log "$pci is now bound to $(basename "$(readlink -f "$driver_link")")"
+    [ -e "/sys/bus/pci/devices/$pci/driver" ] && continue
+    if [ ! -w /sys/bus/pci/drivers/mlx5_core/bind ]; then
+        log "cannot bind $pci: mlx5_core exposes no writable bind attribute (module not loaded?)"
+        continue
+    fi
+    if err=$( { echo "$pci" > /sys/bus/pci/drivers/mlx5_core/bind; } 2>&1 ); then
+        log "bound $pci to mlx5_core"
     else
-        log "$pci still has no driver bound"
+        log "binding $pci to mlx5_core failed: ${err:-no output}"
     fi
 done
+
+# udev creates the netdev asynchronously, so settle before judging the outcome.
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm settle --timeout=30 || true
+else
+    sleep 2
+fi
+
+unrepaired=0
+for pci in "${driverless[@]}"; do
+    dev="/sys/bus/pci/devices/$pci"
+
+    if [ ! -e "$dev/driver" ]; then
+        log "$pci still has no driver bound"
+        unrepaired=1
+        continue
+    fi
+
+    driver=$(basename "$(readlink -f "$dev/driver")")
+    netdevs=("$dev"/net/*)
+    if [ ${#netdevs[@]} -gt 0 ]; then
+        log "$pci is bound to $driver, netdev $(basename "${netdevs[0]}")"
+        continue
+    fi
+
+    # An InfiniBand-link-layer port exposes no netdev unless ib_ipoib is loaded,
+    # which this script deliberately does not pull in; its RDMA device is the
+    # working interface. Gate on the link layer: an Ethernet/RoCE function keeps
+    # its infiniband/ node too, so accepting that without the check would call a
+    # missing netdev a success on exactly the devices this exists to catch.
+    for ibdev in "$dev"/infiniband/*; do
+        for port in "$ibdev"/ports/*; do
+            if [ "$(cat "$port/link_layer" 2>/dev/null)" = "InfiniBand" ]; then
+                log "$pci is bound to $driver, InfiniBand port $(basename "$ibdev"), no netdev"
+                continue 3
+            fi
+        done
+    done
+
+    log "$pci is bound to $driver but has no netdev and no InfiniBand port"
+    unrepaired=1
+done
+
+exit "$unrepaired"

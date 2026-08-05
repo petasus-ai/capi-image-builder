@@ -56,8 +56,32 @@
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
+# Not fatal on purpose: this is the very call that fails when a module is still
+# pinned (see files/mlx-modules-ensure.sh), and letting it abort the build would
+# make the image unbuildable for the reason the repair script exists to handle.
+# The script runs right after and reports whether the stack actually came back.
 - name: Restart openibd
   command: /etc/init.d/openibd restart
+  register: openibd_restart
+  changed_when: openibd_restart.rc == 0
+  # The init script only ever exits 0 or 1, so the exit code alone cannot tell
+  # the pinned-module abort from a driver that failed to load. Discriminate on
+  # the reason instead: rm_mod() echoes rmmod's "... is in use" to stdout. Every
+  # other failure -- Loading HCA driver and Access Layer FAILED, active VFs, a
+  # missing mod_load_funcs -- still fails the build.
+  failed_when: openibd_restart.rc != 0 and 'is in use' not in openibd_restart.stdout
+
+# The init script prints its diagnostic on stdout, not stderr -- rm_mod() in
+# /usr/share/mlnx_ofed/mod_load_funcs captures the rmmod error and echoes it,
+# and nothing in that file writes to fd 2. Reading stderr here would report the
+# failure with no reason attached.
+- name: Report openibd restart failure
+  debug:
+    msg: >-
+      openibd restart exited {{ openibd_restart.rc | default('?') }}:
+      {{ (openibd_restart.stdout | default('')) | trim | truncate(400) }}
+      {{ openibd_restart.msg | default('') }}
+  when: openibd_restart.rc | default(1) != 0
 
 # openibd unloads the OFED stack before loading it, and aborts when sunrpc is
 # already pinned -- leaving Mellanox VFs bound to no driver, so their netdevs
@@ -84,6 +108,26 @@
     name: mlx-modules-ensure
     enabled: yes
     daemon_reload: yes
+
+# The openibd restart above can leave the build host in exactly the state this
+# script repairs, so run it here too rather than shipping an image whose driver
+# stack is half torn down. Mirrors the ofa-kernel-normalize task below.
+- name: Reload Mellanox modules at image build time
+  command: /usr/local/sbin/mlx-modules-ensure.sh
+  register: mlx_modules_ensure
+  changed_when: "'no Mellanox device is missing its driver' not in mlx_modules_ensure.stdout"
+  failed_when: false
+
+# Non-zero means a device was left without a working interface. Not fatal --
+# module state does not persist into the image -- but it must not pass silently,
+# which is the whole point of the script exiting non-zero.
+- name: Report Mellanox reload failure
+  debug:
+    msg: >-
+      mlx-modules-ensure exited {{ mlx_modules_ensure.rc | default('?') }}:
+      {{ (mlx_modules_ensure.stdout | default('')) | trim | truncate(400) }}
+      {{ mlx_modules_ensure.msg | default('') }}
+  when: mlx_modules_ensure.rc | default(1) != 0
 
 # DOCA-OFED >= 3.4 leaves absolute symlinks under /usr/src/ofa_kernel that
 # dangle inside the GPU operator driver container (useHostMofed) and break
