@@ -1,0 +1,60 @@
+name: Container image manifest
+description: >-
+  Publish the architecture-independent tag as a manifest list over whichever
+  per-architecture tags have already been pushed.
+
+# The per-architecture build jobs run in parallel and each one calls this right
+# after pushing its own tag, so the sibling architecture usually is not in the
+# registry yet. Naming both unconditionally made `docker manifest create` fail
+# with "no such manifest: <image>:<tag>-amd64" in whichever job finished first.
+# Probing the registry instead lets that job publish a single-entry list which
+# the job finishing second republishes with every architecture in it.
+inputs:
+  image:
+    description: Fully qualified repository, e.g. quay.io/edgestack/ubuntu-2404-kube.
+    required: true
+  tag:
+    description: Architecture-independent tag to publish, e.g. v1.36.2 or v1.36.2-doca.
+    required: true
+  architectures:
+    description: >-
+      Space-separated architecture suffixes to look for under <tag>-<arch>.
+      Only list architectures the workflow actually builds, otherwise every run
+      reports the missing ones.
+    default: 'aarch64 amd64'
+
+runs:
+  using: composite
+  steps:
+    - name: Create and push manifest list
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        TAG: ${{ inputs.tag }}
+        ARCHES: ${{ inputs.architectures }}
+      run: |
+        set -euo pipefail
+
+        # Reuses the registry credentials the build step logged in with.
+        sources=()
+        for arch in $ARCHES; do
+          if sudo docker manifest inspect "${IMAGE}:${TAG}-${arch}" >/dev/null 2>&1; then
+            sources+=("${IMAGE}:${TAG}-${arch}")
+          else
+            echo "${IMAGE}:${TAG}-${arch} is not pushed yet — leaving it out of ${TAG}"
+          fi
+        done
+
+        if [ ${#sources[@]} -eq 0 ]; then
+          echo "::warning::no per-architecture tag exists for ${IMAGE}:${TAG} — nothing to publish"
+          exit 0
+        fi
+
+        # A run cancelled between create and rm leaves the list behind in the
+        # local manifest store, where it would shadow the registry next time.
+        sudo docker manifest rm "${IMAGE}:${TAG}" >/dev/null 2>&1 || true
+        sudo docker manifest create "${IMAGE}:${TAG}" "${sources[@]}"
+        sudo docker manifest push "${IMAGE}:${TAG}"
+        # Cleanup only — the tag is already published, so it must not decide
+        # the step's exit status under `set -e`.
+        sudo docker manifest rm "${IMAGE}:${TAG}" || true

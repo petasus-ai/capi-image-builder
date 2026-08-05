@@ -139,12 +139,10 @@ jobs:
 
       - name: Create container image manifests
         continue-on-error: true
-        run: |
-          sudo docker manifest create quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca \
-            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca-aarch64 \
-            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca
-          sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca
+        uses: ./.github/actions/manifest
+        with:
+          image: quay.io/edgestack/ubuntu-2404-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-doca
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
@@ -246,12 +244,10 @@ jobs:
 
       - name: Create container image manifests
         continue-on-error: true
-        run: |
-          sudo docker manifest create quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca \
-          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca-aarch64 \
-          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca
-          sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca
+        uses: ./.github/actions/manifest
+        with:
+          image: quay.io/edgestack/rocky-9-uefi-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-doca
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
@@ -357,12 +353,10 @@ jobs:
 
       - name: Create container image manifests
         continue-on-error: true
-        run: |
-          sudo docker manifest create quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca \
-            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca-aarch64 \
-            quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca
-          sudo docker manifest rm quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-doca
+        uses: ./.github/actions/manifest
+        with:
+          image: quay.io/edgestack/ubuntu-2404-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-doca
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
@@ -464,12 +458,10 @@ jobs:
 
       - name: Create container image manifests
         continue-on-error: true
-        run: |
-          sudo docker manifest create quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca \
-          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca-aarch64 \
-          quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca-amd64 --amend
-          sudo docker manifest push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca
-          sudo docker manifest rm quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-doca
+        uses: ./.github/actions/manifest
+        with:
+          image: quay.io/edgestack/rocky-9-uefi-kube
+          tag: ${{ steps.patch-version.outputs.kube-version }}-doca
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
