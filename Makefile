@@ -22,7 +22,15 @@ SHELL := /usr/bin/env bash
 
 # This option is for running docker manifest command
 export DOCKER_CLI_EXPERIMENTAL := enabled
-export PATH := $(PATH):$(PWD)/.local/bin
+# hack/ensure-packer.sh installs the pinned Packer here, so it has to outrank
+# whatever version the build runner ships. Harmless when the directory does not
+# exist, which is the case on a host that already has the pinned version.
+export PATH := $(abspath .local/bin):$(PATH)
+
+# Pin where Packer looks for plugins. Packer's own resolution is not
+# self-consistent -- see hack/ensure-packer-plugins.sh -- so the install step
+# and the build have to be told the same path rather than each guessing.
+export PACKER_PLUGIN_PATH ?= $(HOME)/.packer.d/plugins
 
 export IB_VERSION ?= $(shell git describe --dirty)
 
@@ -55,6 +63,7 @@ deps: deps-qemu
 deps-qemu:
 	hack/ensure-ansible.sh
 	hack/ensure-packer.sh
+	hack/ensure-packer-plugins.sh
 
 ## --------------------------------------
 ## Container variables
@@ -185,7 +194,11 @@ $(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
 ## --------------------------------------
 ## Dynamic clean targets
 ## --------------------------------------
-QEMU_CLEAN_TARGETS := $(subst build-,clean-,$(QEMU_BUILD_TARGETS))
+# Keyed on packer's build_name (packer/qemu/*.json), which is what names the output
+# directory: both architectures share one, and it carries neither the -uefi nor the
+# -aarch64 suffix the build targets do.
+QEMU_OUTPUT_NAMES := ubuntu-2404 rockylinux-9
+QEMU_CLEAN_TARGETS := $(addprefix clean-qemu-,$(QEMU_OUTPUT_NAMES))
 .PHONY: $(QEMU_CLEAN_TARGETS)
 $(QEMU_CLEAN_TARGETS):
 	rm -fr output/$(subst clean-qemu-,,$@)-kube*

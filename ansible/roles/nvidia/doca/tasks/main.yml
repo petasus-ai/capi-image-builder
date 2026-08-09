@@ -78,9 +78,9 @@
   when: openibd_restart.rc | default(1) != 0
 
 # openibd unloads the OFED stack before loading it, and aborts when sunrpc is
-# already pinned -- leaving Mellanox VFs bound to no driver, so their netdevs
-# vanish. It is a boot race, so it hits only some nodes of a cluster; see
-# files/mlx-modules-ensure.sh for the full failure mode.
+# already pinned -- leaving Mellanox functions either bound to no driver or on
+# mlx5_core with no mlx5_ib. It is a boot race, so it hits only some nodes of a
+# cluster; see files/mlx-modules-ensure.sh for the full failure mode.
 - name: Install Mellanox module reload script
   copy:
     src: mlx-modules-ensure.sh
@@ -109,7 +109,7 @@
 - name: Reload Mellanox modules at image build time
   command: /usr/local/sbin/mlx-modules-ensure.sh
   register: mlx_modules_ensure
-  changed_when: "'no Mellanox device is missing its driver' not in mlx_modules_ensure.stdout"
+  changed_when: "'nothing to do' not in mlx_modules_ensure.stdout"
   failed_when: false
 
 # Non-zero means a device was left without a working interface. Not fatal --

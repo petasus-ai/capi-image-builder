@@ -183,16 +183,23 @@ rockylinux:
       python2-pip:
       <<: *rh8_rpms
   qemu:
+    command:
+      # Predictable NIC naming: sysprep strips net.ifnames=0/biosdevname=0 that the
+      # GenericCloud base image bakes into the kernel cmdline. /proc/cmdline still
+      # shows the old value (no reboot after sysprep), so check the boot config.
+      # grep exit 1 = tokens absent (pass); 0 = present; 2 = path missing.
+      grep -Er 'net\.ifnames=|biosdevname=' /boot/loader/entries/ /etc/default/grub:
+        exit-status: 1
+        stdout: []
+        stderr: []
+        timeout: 0
     package:
-      open-vm-tools:
       cloud-init:
-      cloud-utils:
       python3-netifaces:
       <<: *rh8_rpms
   raw:
     package:
       cloud-init:
-      cloud-utils:
       python3-netifaces:
       <<: *rh8_rpms
 rhel:
@@ -290,7 +297,6 @@ ubuntu:
       cloud-initramfs-dyn-netconf:
   qemu:
     package:
-      linux-cloud-tools-virtual:
       linux-tools-virtual:
       open-vm-tools:
       cloud-guest-utils:

@@ -32,6 +32,14 @@ command:
     stdout: ["/pause:"]
     stderr: []
     timeout: 0
+# The rendered root config version must equal what `containerd config default`
+# prints (drop-ins at a higher version are refused). Absolute path for the same
+# secure_path reason as ctr above; POSIX sh only -- goss runs commands through sh.
+  test "$(grep '^version' /etc/containerd/config.toml)" = "$({{ .Vars.sysusrlocal_prefix }}/bin/containerd config default | grep '^version')":
+    exit-status: 0
+    stdout: []
+    stderr: []
+    timeout: 0
 {{if eq .Vars.kubernetes_source_type "pkg"}}
 {{if eq .Vars.kubernetes_cni_source_type "pkg"}}
   crictl images | grep -v 'IMAGE ID' | awk -F'[ /]' '{print $2}' | sed 's/-{{ .Vars.arch }}//g' | sort:
@@ -39,6 +47,29 @@ command:
     stderr: []
     timeout: 0
     stdout: ["coredns", "etcd", "kube-apiserver", "kube-controller-manager", "kube-proxy", "kube-scheduler", "pause"]
+{{if eq .Vars.accel_provider "nvidia"}}
+# The boot units ansible/roles/nvidia/doca installs and enables. Asserted with
+# is-enabled rather than goss's service resource, which insists on a `running`
+# expectation too: all three are oneshot units the build runs by hand, never
+# through systemd, so their active state at capture says nothing about a booted
+# node. One command per unit, because `systemctl is-enabled a b c` exits 0 when
+# any one of them is enabled.
+  systemctl is-enabled openibd:
+    exit-status: 0
+    stdout: ["enabled"]
+    stderr: []
+    timeout: 0
+  systemctl is-enabled mlx-modules-ensure:
+    exit-status: 0
+    stdout: ["enabled"]
+    stderr: []
+    timeout: 0
+  systemctl is-enabled ofa-kernel-normalize:
+    exit-status: 0
+    stdout: ["enabled"]
+    stderr: []
+    timeout: 0
+{{end}}
 {{end}}
 {{end}}
 {{if and (eq .Vars.kubernetes_source_type "http") (eq .Vars.kubernetes_cni_source_type "http") (not .Vars.kubernetes_load_additional_imgs)}}

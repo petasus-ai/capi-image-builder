@@ -62,6 +62,13 @@ when upstream cuts a new image.
 make deps-qemu
 ```
 
+`hack/ensure-packer.sh` installs the pinned Packer into `.local/bin` whenever the
+one on `PATH` is a different version; the Makefile puts that directory first, so
+the pin wins over whatever a build runner ships. `hack/ensure-packer-plugins.sh`
+then installs the `qemu`, `ansible` and `goss` plugins at pinned versions into
+`PACKER_PLUGIN_PATH`, which the Makefile and the script both default to
+`~/.packer.d/plugins` so install and build agree on the location.
+
 **2. Build an image**
 
 ```bash
@@ -125,6 +132,14 @@ inventory, and `sysprep` runs last because it starts removing the traces that
 inventory reads.
 
 Goss runs after Ansible as a Packer provisioner; its specs live in `packer/goss/`.
+The provisioner passes `accel_provider` through `vars_inline`, and on `nvidia`
+builds the command and file specs additionally assert that `openibd`,
+`mlx-modules-ensure` and `ofa-kernel-normalize` are enabled (`systemctl
+is-enabled`, one per unit) and that the two scripts those units execute are in
+place. Only enablement is asserted, through a command rather than goss's
+service resource: that resource insists on a `running` expectation as well, and
+all three are oneshot units the build runs by hand, so their active state at
+capture says nothing about a booted node.
 
 ## Kernel Currency
 
@@ -197,6 +212,23 @@ DKMS source, deregisters the unused iser/isert/srp modules, and runs an explicit
 rpm transaction, so that explicit pass is what actually produces the modules.
 `dkms status` then gates the build, dumping `make.log` compile errors into the
 Ansible output on failure.
+
+**RDMA stack at boot.** `openibd` starts by stopping: it unloads the OFED module
+stack before loading it, and that unload aborts with `rmmod: ERROR: Module
+sunrpc is in use` whenever `sunrpc` is already pinned (rpcbind, an NFS mount).
+Depending on how far the unload got, a node is left with Mellanox functions
+bound to no driver, or on `mlx5_core` with no `mlx5_ib`. `mlx-modules-ensure.service`
+(`roles/nvidia/doca`) runs after `openibd` whether it succeeded or failed, loads
+`mlx5_core mlx5_ib ib_umad ib_uverbs rdma_ucm ib_ipoib` unconditionally, rebinds
+any driverless Mellanox function, and exits non-zero unless every function has an
+InfiniBand port or a netdev, so an unrepaired node shows in `systemctl --failed`.
+The script is shared verbatim with edgestack-image-builder; change both copies
+together. `ib_ipoib` is loaded so an IB-only function is reachable by IP without
+a per-node modules-load entry.
+
+Plain images carry none of this: `linux-modules-extra` / `kernel-modules-extra`,
+and with them `mlx5_ib`, are installed only by `nvidia/doca`. A guest that needs
+an InfiniBand stack has to boot the DOCA image.
 
 ## Upgrade Freeze
 

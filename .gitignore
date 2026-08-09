@@ -5,6 +5,8 @@
 /output/
 /.bin/
 /.local/bin/
+/venv/
+/.venv/
 manifest.json
 /images/
 /ansible/roles/addons/files/

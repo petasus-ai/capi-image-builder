@@ -31,6 +31,7 @@ builds = {'amazon': ['amazon linux', 'centos', 'flatcar', 'ubuntu', 'windows'],
 def generate_goss(provider, system, versions, runtime, dryrun=False, save=False):
     cmd = ['goss', '-g', 'packer/goss/goss.yaml', '--vars', 'packer/goss/goss-vars.yaml']
     vars = {'OS': system, 'PROVIDER': provider,
+            'arch': versions['arch'],
             'containerd_version': versions['containerd'],
             'docker_ee_version': versions['docker'],
             'distribution_version': versions['os'],
@@ -87,6 +88,9 @@ def main():
                         action='append',
                         default=None,
                         help='One OS. Can be used multiple times')
+    parser.add_argument('--arch',
+                        default='amd64',
+                        help='Architecture rendered into arch-sensitive checks')
     parser.add_argument('--dry-run',
                         action='store_true',
                         help='Do not run GOSS, just print GOSS commands')
@@ -96,11 +100,14 @@ def main():
     args = parser.parse_args()
 
     versions = {}
+    versions['arch'] = args.arch
     # Load JSON files with Version info
     cni = read_json_file(os.path.join(root_path, 'packer', 'config', 'cni.json'))
     versions['cni'] = cni['kubernetes_cni_semver'].lstrip('v')
-    versions['cni_deb'] = cni['kubernetes_cni_deb_version']
-    versions['cni_rpm'] = cni['kubernetes_cni_rpm_version'].split('-')[0]
+    # The deb/rpm CNI pins are null in cni.json (the k8s package repo resolves
+    # the version), so they may be absent rather than strings.
+    versions['cni_deb'] = cni['kubernetes_cni_deb_version'] or ''
+    versions['cni_rpm'] = (cni['kubernetes_cni_rpm_version'] or '').split('-')[0]
 
     k8s = read_json_file(os.path.join(root_path, 'packer', 'config', 'kubernetes.json'))
     versions['k8s'] = k8s['kubernetes_semver'].lstrip('v')
@@ -110,8 +117,13 @@ def main():
     containerd = read_json_file(os.path.join(root_path, 'packer', 'config', 'containerd.json'))
     versions['containerd'] = containerd['containerd_version']
 
-    docker = read_json_file(os.path.join(root_path, 'packer', 'config', 'windows', 'docker.json'))
-    versions['docker'] = docker['docker_ee_version']
+    # The windows config tree is not part of this fork; docker_ee_version only
+    # feeds the windows docker-ee spec, so an empty value is fine without it.
+    docker_json = os.path.join(root_path, 'packer', 'config', 'windows', 'docker.json')
+    if os.path.exists(docker_json):
+        versions['docker'] = read_json_file(docker_json)['docker_ee_version']
+    else:
+        versions['docker'] = ''
 
     common = read_json_file(os.path.join(root_path, 'packer', 'config', 'common.json'))
     versions['pause'] = common['pause_image']

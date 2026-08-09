@@ -15,3 +15,15 @@ file:
     - {{.}}
   {{end}}
 {{end}}
+{{if eq .Vars.accel_provider "nvidia"}}
+# The ExecStart targets of the units asserted in goss-service.yaml; an enabled
+# unit whose script went missing would otherwise pass.
+  /usr/local/sbin/mlx-modules-ensure.sh:
+    exists: true
+    filetype: file
+    mode: "0755"
+  /usr/local/sbin/ofa-kernel-normalize.sh:
+    exists: true
+    filetype: file
+    mode: "0755"
+{{end}}

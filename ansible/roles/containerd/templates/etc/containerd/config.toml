@@ -8,14 +8,15 @@
 #}
 {% set sandbox_pause_image = pause_image_effective | default(pause_image) %}
 
-{% if containerd_version is version('2.0.0', '>=') %}
-# Config version 4 for containerd 2.x (version 1 was removed in 2.0 and version
-# 2 is deprecated). Pinned to 4 rather than 3 because containerd refuses to
-# start when a conf.d drop-in declares a higher version than the root config,
-# and the NVIDIA container toolkit (gpu-operator) writes its drop-in as version
-# 4. containerd migrates a v3 root to v4 on load anyway, so declaring 4 here
-# only removes the migration - the plugin paths are identical.
+{% if containerd_version is version('2.3.0', '>=') %}
+# The root config must be at the binary's native version (4 since 2.3):
+# containerd refuses conf.d drop-ins written at a higher version, and producers
+# that ask the binary (nvidia-container-toolkit) write at the native version.
 version = 4
+{% elif containerd_version is version('2.0.0', '>=') %}
+# Config version 3 is the native format for containerd 2.0-2.2 (version 1 was
+# removed in 2.0 and version 2 is deprecated).
+version = 3
 {% else %}
 # Use config version 2 to enable new configuration fields.
 # Config file is parsed as version 1 by default.

@@ -325,10 +325,6 @@ jobs:
           . /home/rocky/.venv/bin/activate
           echo PATH=$PATH >> $GITHUB_ENV
 
-      - name: Patch non-existing package
-        run: |
-          sed -i "/linux-cloud-tools-virtual/d" ansible/roles/node/defaults/main.yml
-
       - name: Patch K8S Version
         id: patch-version
         run: |

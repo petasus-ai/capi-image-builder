@@ -7,6 +7,6 @@ network:
   ethernets:
     nics:
       match:
-        name: ens*
+        name: en*
       dhcp4: yes
       dhcp6: yes

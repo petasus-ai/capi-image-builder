@@ -47,6 +47,43 @@
       command: subscription-manager clean
   when: ansible_distribution == "RedHat"
 
+# The Rocky 9 GenericCloud base bakes net.ifnames=0 biosdevname=0 into the kernel
+# cmdline, naming NICs eth0 while CAPK tenant networkdata targets enp1s0. Strip
+# the tokens after every kernel-touching step; no in-build reboot — the build's
+# NM profile is pinned to eth0. Rocky 10 GenericCloud ships without these tokens.
+- name: Ensure grubby is present for kernel cmdline edits
+  package:
+    name: grubby
+    state: present
+
+- name: Remove net.ifnames/biosdevname from all boot loader entries
+  command: grubby --update-kernel=ALL --remove-args="net.ifnames biosdevname"
+  changed_when: true
+
+- name: Check for GRUB defaults file
+  stat:
+    path: /etc/default/grub
+  register: grub_defaults
+
+- name: Remove net.ifnames/biosdevname from GRUB defaults
+  replace:
+    path: /etc/default/grub
+    regexp: '\s*\b(net\.ifnames|biosdevname)=[^\s"]*'
+    replace: ''
+  when: grub_defaults.stat.exists
+
+- name: Check for kernel-install cmdline file
+  stat:
+    path: /etc/kernel/cmdline
+  register: kernel_cmdline_file
+
+- name: Remove net.ifnames/biosdevname from kernel-install cmdline
+  replace:
+    path: /etc/kernel/cmdline
+    regexp: '\s*\b(net\.ifnames|biosdevname)=[^\s"]*'
+    replace: ''
+  when: kernel_cmdline_file.stat.exists
+
 - name: Remove yum package caches
   yum:
     autoremove: yes
@@ -74,6 +111,27 @@
     state: absent
     path: "{{ item.path }}"
   loop: "{{ ci_nm_profiles.files }}"
+
+# Base-image profiles pinned to eth0 can never bind once naming is predictable.
+# Deleting the files leaves the build's active eth0 connection up (no `nmcli con
+# reload` — this SSH session rides on eth0).
+- name: Remove legacy eth0 ifcfg profile
+  file:
+    state: absent
+    path: /etc/sysconfig/network-scripts/ifcfg-eth0
+
+- name: Find NetworkManager keyfiles pinned to eth0
+  find:
+    paths: /etc/NetworkManager/system-connections
+    patterns: '*.nmconnection'
+    contains: '^interface-name=eth0$'
+  register: eth0_nm_profiles
+
+- name: Remove NetworkManager keyfiles pinned to eth0
+  file:
+    state: absent
+    path: "{{ item.path }}"
+  loop: "{{ eth0_nm_profiles.files }}"
 
 - name: Remove the kickstart log
   file:
