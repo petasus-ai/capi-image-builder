@@ -387,11 +387,45 @@ case the tag name is the Kubernetes version to build.
 | `main.yaml` | plain images, both distros and architectures |
 | `doca_image.yaml` | `-doca` variants (`accel_provider=nvidia`) |
 | `rebellions.yaml` | `-rebellions` variants |
+| `auto-kube-release.yaml` | nothing — daily detector that dispatches the two build workflows when upstream publishes a Kubernetes patch we have not built (`scripts/pending-kube-builds.py`) |
+| `auto-remediate.yaml` | nothing — daily detector that dispatches rebuilds for images whose readiness grade a rebuild would restore (see below) |
 | `check-sigstore-egress.yaml` | pre-flight: can the runners reach Fulcio, Rekor and the TUF CDN? Read-only, credential-free, no signing |
 
 Each build job produces the qcow2, wraps it in an Alpine-based container-disk
 image carrying the labels described above, pushes the per-arch tag, amends the
 multi-arch manifest list, and then runs the supply-chain action.
+
+### Auto-Remediation (rebuild-to-patch)
+
+`auto-remediate.yaml` (daily, after the SBOM mirror's re-scan) runs
+`scripts/auto-remediate.sh` — the security twin of `auto-kube-release.yaml`:
+that one rebuilds because upstream Kubernetes moved, this one rebuilds because
+the distro shipped a security fix the image lacks. It grades the **newest
+patch of every published series** (per distro and flavour; older patches stay
+published but are not what operators deploy) with `scripts/grade.mjs` and
+dispatches `main.yaml` / `doca_image.yaml` for combos with actionable
+Critical/High findings. Since the vulnerability pipeline reports
+`fix.availableInDistro`, those are by construction findings whose fix the
+distro really publishes — a rebuild is guaranteed to clear them, republish the
+tags, and stand the loop down.
+
+`grade.mjs` is a **vendored, dependency-free copy of the catalog portal's
+grading formula** (`petasus-image-catalog`: `vuln.ts` fold/track +
+`readiness.ts` ladders + `grade-summary.ts` projection), shared byte-identical
+with edgestack-image-builder. A portal change to the formula must be mirrored
+into both copies, bumping `GRADE_FORMULA_VERSION` everywhere; verify a sync by
+diffing the CLIs' output on the same reports.
+
+Safety rails: at most `MAX_DISPATCH` (4) dispatches per run, a 72h per-combo
+cooldown (`.github/auto-remediate-state.json`, committed by the workflow), and
+a per-workflow busy hold snapshotted before dispatching — same pattern as
+`auto-kube-release.yaml`. `-cilium` tags never match (that branch owns its own
+schedule) and `EXCLUDE_KEY_REGEX` can retire combos from the loop.
+
+**Ships in dry-run**: it only maintains the `auto-remediate` tracking issue
+(closed automatically when everything grades clean). Go live by setting the
+repository variable `AUTO_REMEDIATE_DRY_RUN=false`; set it back to `true` to
+pause. No secrets beyond the built-in `GITHUB_TOKEN`.
 
 ## Repository Layout
 

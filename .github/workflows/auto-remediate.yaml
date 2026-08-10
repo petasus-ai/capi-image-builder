@@ -1,0 +1,72 @@
+name: Auto-remediate degraded images
+
+# Rebuild-to-patch loop (scripts/auto-remediate.sh): grade the newest patch of
+# every published kube series with the vendored portal formula and dispatch
+# main.yaml / doca_image.yaml for the combos whose actionable Critical/High
+# findings a rebuild would clear. The security twin of
+# auto-kube-release.yaml: that one rebuilds because upstream Kubernetes moved,
+# this one rebuilds because the distro shipped a fix the image lacks.
+# Scheduled after the SBOM mirror's daily re-scan (~03:55–06:15 UTC) so it
+# judges fresh reports, not yesterday's.
+#
+# Ships in DRY RUN: it only maintains the `auto-remediate` tracking issue.
+# Go live by setting the repository variable AUTO_REMEDIATE_DRY_RUN=false
+# (no commit needed); setting it back to true pauses dispatching again.
+
+on:
+  schedule:
+    # 16:41 KST daily — after the mirror refresh, offset from both the
+    # on-the-hour crowd and the edgestack builder's 07:25 sweep (the two
+    # loops share the self-hosted runner pool).
+    - cron: '41 7 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only — do not dispatch builds'
+        required: true
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      max_dispatch:
+        description: 'Maximum build dispatches this run'
+        required: true
+        default: '4'
+
+# contents: write commits the cooldown state file; actions: write dispatches
+# the build workflows (workflow_dispatch is exempt from the GITHUB_TOKEN
+# recursion guard); issues: write maintains the tracking issue.
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+# Serialised against itself: two overlapping sweeps would read the same
+# registry state and dispatch every rebuild twice.
+concurrency:
+  group: auto-remediate
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # scripts/grade.mjs is a vendored, dependency-free copy of the portal's
+      # grading formula (see its header for the sync contract) — plain node,
+      # no checkout of the private portal repo, no PAT.
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Detect degraded images and remediate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || vars.AUTO_REMEDIATE_DRY_RUN || 'true' }}
+          MAX_DISPATCH: ${{ github.event.inputs.max_dispatch || '4' }}
+        run: bash scripts/auto-remediate.sh
