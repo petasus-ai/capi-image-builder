@@ -1,3 +1,5 @@
+name: Build Kube golden images
+
 on:
   workflow_dispatch:
     inputs:

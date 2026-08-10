@@ -1,3 +1,5 @@
+name: Build Kube golden images (Rebellions)
+
 on:
   workflow_dispatch:
     inputs:

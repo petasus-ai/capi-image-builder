@@ -1,3 +1,5 @@
+name: Build Kube golden images (DOCA)
+
 on:
   workflow_dispatch:
     inputs:
