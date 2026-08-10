@@ -32,7 +32,13 @@
 #                    repo variable to "false" to go live
 #
 # Env:  DRY_RUN (true) · MAX_DISPATCH (4) · COOLDOWN_HOURS (72)
-#       STATE_FILE      combo -> last-dispatch record, committed to this repo
+#       STATE_BRANCH    branch holding the combo -> last-dispatch record
+#                       (auto-remediate-state). Kept OFF the default branch
+#                       and always exactly one parentless commit, force-pushed
+#                       — a live run must not leave a "dispatched X" commit in
+#                       the repo's history every day. Set empty to disable
+#                       persistence (local testing, with STATE_FILE).
+#       STATE_FILE      working copy of the state (testing override)
 #       GITHUB_TOKEN    actions:write + issues:write + contents:write; when
 #                       empty the script forces DRY_RUN and prints the report
 #       AUTO_REPO_LIST  override the repo sweep (testing)
@@ -46,7 +52,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 DRY_RUN="${DRY_RUN:-true}"
 MAX_DISPATCH="${MAX_DISPATCH:-4}"
 COOLDOWN_HOURS="${COOLDOWN_HOURS:-72}"
-STATE_FILE="${STATE_FILE:-$SCRIPT_DIR/../.github/auto-remediate-state.json}"
+STATE_BRANCH="${STATE_BRANCH-auto-remediate-state}"
 REPO_SLUG="${GITHUB_REPOSITORY:-$BUILDER_REPO}"
 TOKEN="${GITHUB_TOKEN:-}"
 API="https://api.github.com/repos/${REPO_SLUG}"
@@ -72,6 +78,21 @@ WORK=$(mktemp -d "${TMPDIR:-/tmp}/remediate.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/reports"
 : > "$WORK/meta.jsonl"
+ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+
+# ---- load cooldown state from its own branch --------------------------------
+# The state lives on STATE_BRANCH as a single parentless commit, never on the
+# default branch: a live run rewrites it on every dispatch, and that churn
+# must not pollute the repo's history. Missing branch = first run = {}.
+STATE_FILE="${STATE_FILE:-$WORK/state.json}"
+if [[ -n "$STATE_BRANCH" ]]; then
+  if git -C "$ROOT" fetch -q origin "$STATE_BRANCH" 2>/dev/null; then
+    git -C "$ROOT" show FETCH_HEAD:auto-remediate-state.json > "$STATE_FILE" 2>/dev/null || echo '{}' > "$STATE_FILE"
+  else
+    echo '{}' > "$STATE_FILE"
+  fi
+fi
+[[ -s "$STATE_FILE" ]] || echo '{}' > "$STATE_FILE"
 
 # ---- sweep quay: newest patch per (os, flavour, series), fetch reports ------
 total=0 fetched=0
@@ -138,7 +159,6 @@ log "graded $(wc -l < "$WORK/grades.jsonl" | tr -d ' ') report(s)"
 # rebuilds both architectures, so the amd64/aarch64 pair merges here.
 # `drivers` non-empty is the whole trigger.
 now=$(date -u +%s)
-[[ -f "$STATE_FILE" ]] || echo '{}' > "$STATE_FILE"
 candidates=$(cat "$WORK/grades.jsonl" "$WORK/meta.jsonl" | jq -s \
   --slurpfile state "$STATE_FILE" --argjson now "$now" --argjson cool "$((COOLDOWN_HOURS * 3600))" '
   (map(select(.kind == "meta")) | INDEX(.file)) as $meta
@@ -233,7 +253,7 @@ ${rows:-| _none_ | | | | | | |}
 - Cap ${MAX_DISPATCH}/run, cooldown ${COOLDOWN_HOURS}h per combo; a combo whose
   workflow is already building is held for the next run.
 - Go live / pause: set repository variable \`AUTO_REMEDIATE_DRY_RUN\` to
-  \`false\` / \`true\`. State: \`.github/auto-remediate-state.json\`.
+  \`false\` / \`true\`. Cooldown state: \`${STATE_BRANCH:-<disabled>}\` branch.
 EOF
 )
 
@@ -268,17 +288,21 @@ else
 fi
 
 # ---- persist state ----------------------------------------------------------
-if [[ "$dispatched" -gt 0 ]]; then
-  root=$(cd "$SCRIPT_DIR/.." && pwd)
-  git -C "$root" config user.name "$MIRROR_GIT_NAME"
-  git -C "$root" config user.email "$MIRROR_GIT_EMAIL"
-  git -C "$root" add "$STATE_FILE"
-  git -C "$root" commit -q -m "auto-remediate: dispatch $(echo "$eligible" | jq -r '[.[].key] | join(", ")')"
-  for attempt in 1 2 3; do
-    git -C "$root" push -q origin HEAD && { log "state committed"; break; }
-    log "state push failed (attempt ${attempt}/3) — rebasing"
-    git -C "$root" pull -q --rebase origin "$DISPATCH_REF"
-  done
+# Plumbing, not porcelain: a parentless commit-tree force-pushed to
+# STATE_BRANCH keeps that branch at exactly one commit forever — no history
+# accumulates anywhere, and the default branch is never touched. The
+# concurrency group serialises runs, so the force-push cannot race itself.
+if [[ "$dispatched" -gt 0 && -n "$STATE_BRANCH" ]]; then
+  blob=$(git -C "$ROOT" hash-object -w "$STATE_FILE")
+  tree=$(printf '100644 blob %s\tauto-remediate-state.json\n' "$blob" | git -C "$ROOT" mktree)
+  commit=$(git -C "$ROOT" \
+    -c user.name="$MIRROR_GIT_NAME" -c user.email="$MIRROR_GIT_EMAIL" \
+    commit-tree "$tree" -m "auto-remediate state @ $(date -u +%FT%TZ)")
+  if git -C "$ROOT" push -q -f origin "${commit}:refs/heads/${STATE_BRANCH}"; then
+    log "state saved to ${STATE_BRANCH}"
+  else
+    log "WARNING: state push failed — cooldowns may repeat next run"
+  fi
 fi
 
 log "done: ${mode}"

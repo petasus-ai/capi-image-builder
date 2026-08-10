@@ -417,7 +417,8 @@ into both copies, bumping `GRADE_FORMULA_VERSION` everywhere; verify a sync by
 diffing the CLIs' output on the same reports.
 
 Safety rails: at most `MAX_DISPATCH` (4) dispatches per run, a 72h per-combo
-cooldown (`.github/auto-remediate-state.json`, committed by the workflow), and
+cooldown (force-pushed as the single-commit `auto-remediate-state` branch, so
+no history accumulates on master), and
 a per-workflow busy hold snapshotted before dispatching — same pattern as
 `auto-kube-release.yaml`. `-cilium` tags never match (that branch owns its own
 schedule) and `EXCLUDE_KEY_REGEX` can retire combos from the loop.

@@ -32,7 +32,9 @@ on:
         required: true
         default: '4'
 
-# contents: write commits the cooldown state file; actions: write dispatches
+# contents: write force-pushes the cooldown state to its own single-commit
+# branch (auto-remediate-state — never the default branch, which must not
+# accumulate a "dispatched X" commit per day); actions: write dispatches
 # the build workflows (workflow_dispatch is exempt from the GITHUB_TOKEN
 # recursion guard); issues: write maintains the tracking issue.
 permissions:
