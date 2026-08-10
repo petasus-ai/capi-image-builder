@@ -108,6 +108,8 @@ jobs:
 
       - name: Build image
         run: make build-qemu-ubuntu-2404
+        env:
+          PACKER_BUILD_TIMEOUT: 120m
 
       - name: Create Dockerfile
         run: |
@@ -213,6 +215,8 @@ jobs:
 
       - name: Build image
         run: make build-qemu-rockylinux-9-uefi
+        env:
+          PACKER_BUILD_TIMEOUT: 120m
 
       - name: Create Dockerfile
         run: |
@@ -322,6 +326,8 @@ jobs:
 
       - name: Build image
         run: make build-qemu-ubuntu-2404-aarch64
+        env:
+          PACKER_BUILD_TIMEOUT: 120m
 
       - name: Create Dockerfile
         run: |
@@ -427,6 +433,8 @@ jobs:
 
       - name: Build image
         run: make build-qemu-rockylinux-9-uefi-aarch64
+        env:
+          PACKER_BUILD_TIMEOUT: 120m
 
       - name: Create Dockerfile
         run: |
