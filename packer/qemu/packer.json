@@ -190,7 +190,9 @@
         "kubernetes_deb_version": "{{ user `kubernetes_deb_version` }}",
         "kubernetes_rpm_version": "{{ split (user `kubernetes_rpm_version`) \"-\" 0  }}",
         "kubernetes_source_type": "{{user `kubernetes_source_type`}}",
-        "kubernetes_version": "{{user `kubernetes_semver` | replace \"v\" \"\" 1}}"
+        "kubernetes_version": "{{user `kubernetes_semver` | replace \"v\" \"\" 1}}",
+        "pause_image": "{{user `pause_image`}}",
+        "sysusrlocal_prefix": "{{user `sysusrlocal_prefix`}}"
       },
       "version": "{{user `goss_version`}}"
     }

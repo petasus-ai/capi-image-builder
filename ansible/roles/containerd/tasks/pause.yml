@@ -1,0 +1,80 @@
+# Copyright 2018 The Kubernetes Authors.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+# http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# containerd pins the pause image used for every pod sandbox, while kubeadm
+# pre-pulls the pause its own version wants. When the two drift -- as on the
+# k8s 1.36 bump, which moved pause from 3.10.1 to 3.10.2 while pause_image
+# stayed put -- sandbox creation misses the local image cache and reaches for
+# the upstream registry. On air-gapped nodes that is fatal: no static
+# control-plane pod starts and kubeadm init dies waiting for the API server.
+#
+# kubeadm is the source of truth, so ask it and realign containerd instead of
+# trusting the hardcoded default. This runs after the kubernetes role because
+# containerd is configured before kubeadm exists; the roles cannot simply be
+# swapped, since `kubeadm config images pull` needs containerd already running.
+- name: Ask kubeadm which pause image it expects
+  shell: >-
+    set -o pipefail &&
+    kubeadm config images list
+    --kubernetes-version {{ kubernetes_semver }}
+    --image-repository {{ kubernetes_container_registry }}
+    | grep '/pause:'
+  args:
+    executable: /bin/bash
+  register: kubeadm_pause_image
+  changed_when: false
+
+# Left visible in the build log on purpose: the repin below keeps the image
+# working, but pause_image is what the goss suite asserts against, so a drift
+# still has to be fixed at the source.
+- name: Report that pause_image is stale
+  debug:
+    msg: >-
+      pause_image is {{ pause_image }} but kubeadm {{ kubernetes_semver }}
+      expects {{ kubeadm_pause_image.stdout }}. Repinning containerd to
+      kubeadm's value -- update pause_image in packer/config/common.json
+      (and ansible/roles/node/defaults/main.yml) to match.
+  when: kubeadm_pause_image.stdout != pause_image
+
+# Published under its own name rather than overriding pause_image: that one is
+# a packer extra-var, the highest precedence level there is, so no task-level
+# vars entry can shadow it. The config.toml template prefers this value.
+- name: Publish the pause image containerd should pin
+  set_fact:
+    pause_image_effective: "{{ kubeadm_pause_image.stdout }}"
+
+# Re-rendered with the tag kubeadm reported; a no-op when the two already
+# agree, which is why the restart below is gated on an actual change.
+- name: Repin containerd's sandbox image to the tag kubeadm expects
+  template:
+    dest: /etc/containerd/config.toml
+    src: "{{ containerd_config_file }}"
+    mode: 0644
+  register: containerd_pause_repin
+
+- name: Restart containerd to pick up the repinned sandbox image
+  systemd:
+    name: containerd
+    daemon_reload: yes
+    state: restarted
+  when: containerd_pause_repin is changed
+
+# Recorded so the goss suite can assert the pin is actually cached without
+# re-deriving it from config.toml, and so the value stays inspectable on a
+# running node.
+- name: Record the pinned pause image
+  copy:
+    content: "{{ kubeadm_pause_image.stdout }}\n"
+    dest: /etc/containerd/pinned-pause-image
+    mode: 0644

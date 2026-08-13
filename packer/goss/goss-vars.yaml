@@ -71,6 +71,8 @@ common_photon_rpms: &common_photon_rpms
 
 arch: ""
 containerd_version: ""
+pause_image: ""
+sysusrlocal_prefix: ""
 kubernetes_cni_source_type: ""
 kubernetes_cni_version: ""
 kubernetes_source_type: ""

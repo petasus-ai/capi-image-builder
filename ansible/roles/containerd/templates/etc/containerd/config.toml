@@ -1,4 +1,12 @@
 ## template: jinja
+{#
+  pause_image arrives as a packer extra-var, which outranks every other
+  precedence level -- a task cannot shadow it. tasks/pause.yml therefore
+  publishes what kubeadm actually pulls under a separate name and we prefer
+  that here, falling back to the configured default on the first render (which
+  happens before kubeadm is installed).
+#}
+{% set sandbox_pause_image = pause_image_effective | default(pause_image) %}
 
 {% if containerd_version is version('2.0.0', '>=') %}
 # Config version 3 is the native format for containerd 2.x (version 1 was
@@ -17,7 +25,7 @@ imports = ["/etc/containerd/conf.d/*.toml"]
 [plugins]
 {% if containerd_version is version('2.0.0', '>=') %}
   [plugins.'io.containerd.cri.v1.images'.pinned_images]
-    sandbox = "{{ pause_image }}"
+    sandbox = "{{ sandbox_pause_image }}"
   # registry.mirrors/registry.configs were removed in containerd 2.0;
   # per-registry endpoints and TLS options come from certs.d hosts.toml
   # files under config_path (see the harbor hosts.toml in this role).
@@ -31,7 +39,7 @@ imports = ["/etc/containerd/conf.d/*.toml"]
 {% endif %}
 {% else %}
   [plugins."io.containerd.grpc.v1.cri"]
-    sandbox_image = "{{ pause_image }}"
+    sandbox_image = "{{ sandbox_pause_image }}"
   [plugins."io.containerd.grpc.v1.cri".registry]
       [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
         [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]

@@ -10,6 +10,28 @@ command:
     stdout: []
     stderr: []
     timeout: 0
+# The pause image containerd pins for pod sandboxes must be present in the
+# local image cache. A miss sends containerd to the upstream registry, which is
+# fatal on air-gapped nodes: no pod sandbox can be created, so no static
+# control-plane pod starts and kubeadm init dies waiting for the API server.
+# That is exactly how the k8s 1.36 bump broke -- pause moved to 3.10.2 while the
+# pinned tag stayed at 3.10.1.
+#
+# Asserted against the pin recorded by containerd/tasks/pause.yml, not against
+# the pause_image variable: a build targets whatever patch kube_version names
+# (the workflow rewrites kubernetes_semver per run) while pause_image is a
+# single static default, so comparing to it would fire on every build of a
+# different minor -- pause is 3.10.1 across all of 1.34/1.35 and 3.10.2 from
+# 1.36.0 on.
+#
+# ctr is called by absolute path on purpose: goss runs under sudo, and on EL
+# hosts sudoers' secure_path is /sbin:/bin:/usr/sbin:/usr/bin -- so the
+# containerd binaries under /usr/local/bin are not on PATH there.
+  {{ .Vars.sysusrlocal_prefix }}/bin/ctr -n k8s.io images ls -q | grep -F -f /etc/containerd/pinned-pause-image:
+    exit-status: 0
+    stdout: ["/pause:"]
+    stderr: []
+    timeout: 0
 {{if eq .Vars.kubernetes_source_type "pkg"}}
 {{if eq .Vars.kubernetes_cni_source_type "pkg"}}
   crictl images | grep -v 'IMAGE ID' | awk -F'[ /]' '{print $2}' | sed 's/-{{ .Vars.arch }}//g' | sort:

@@ -32,6 +32,12 @@
         name: containerd
     - include_role:
         name: kubernetes
+    # containerd's pinned sandbox image has to match the pause tag kubeadm
+    # pulls, and kubeadm only exists after the role above -- so the pin is
+    # reconciled here rather than in the containerd role's main flow.
+    - include_role:
+        name: containerd
+        tasks_from: pause
     - include_role:
         name: load_additional_components
       when: load_additional_components | bool

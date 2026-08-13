@@ -9,7 +9,7 @@
   "http_proxy": "",
   "https_proxy": "",
   "no_proxy": "",
-  "pause_image": "registry.k8s.io/pause:3.10.1",
+  "pause_image": "registry.k8s.io/pause:3.10.2",
   "reenable_public_repos": "true",
   "remove_extra_repos": "false"
 }
