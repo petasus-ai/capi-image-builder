@@ -230,9 +230,23 @@ if [[ "$DRY_RUN" != "true" ]]; then
 fi
 
 # ---- report: job summary + standing issue -----------------------------------
-mode="DRY RUN — no builds dispatched"
-[[ -z "$TOKEN" ]] && mode="DRY RUN (no token) — no builds dispatched"
-[[ "$dispatched" -gt 0 ]] && mode="LIVE — dispatched ${dispatched} build(s)"
+# The mode line must never claim DRY RUN for a live run: a run with
+# dry_run=false that dispatches nothing (everything cooling down, every
+# eligible combo's workflow busy, or nothing degraded) used to fall through to
+# the "DRY RUN" default and read as if the flag had been ignored.
+if [[ -z "$TOKEN" ]]; then
+  mode="DRY RUN (no token) — no builds dispatched"
+elif [[ "$DRY_RUN" == "true" ]]; then
+  mode="DRY RUN — no builds dispatched"
+elif [[ "$dispatched" -gt 0 ]]; then
+  mode="LIVE — dispatched ${dispatched} build(s)"
+elif [[ "$n_eligible" -gt 0 ]]; then
+  mode="LIVE — nothing dispatched (${n_eligible} eligible: workflow busy or dispatch failed, see log)"
+elif [[ "$n_all" -gt 0 ]]; then
+  mode="LIVE — all ${n_all} candidate(s) cooling down, nothing dispatched"
+else
+  mode="LIVE — no image needs a rebuild"
+fi
 
 rows=$(echo "$candidates" | jq -r '.[] |
   "| \(.os) | \(.kube_version)\(if .flavour == "-doca" then " doca" else "" end) | \(.grade) | \(.critical) | \(.high) | \(.cves | join(", ")) | \(if .cooling then "cooling down" else "ready" end) |"')
