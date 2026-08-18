@@ -107,7 +107,24 @@ jobs:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
 
+      # Packer's downloader can neither resume nor retry when the caching proxy
+      # in front of the upstream mirrors truncates the image mid-transfer, so a
+      # bad transfer used to fail the whole build. Fetch a verified copy with
+      # curl first (hack/fetch-image.sh, shared byte-identical with
+      # edgestack-image-builder — the on-host image cache and its per-image
+      # locks are shared with that builder's jobs too) and point Packer at it.
+      - name: Fetch cloud image
+        run: |
+          hack/fetch-image.sh \
+            packer/qemu/qemu-ubuntu-2404.json \
+            "${RUNNER_TEMP}/iso-override.json"
+
       - name: Build image
+        env:
+          # Through the environment, not the command line: the Makefile expands
+          # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
+          # the distro var file, so this override wins iso_url/iso_checksum.
+          PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
         run: make build-qemu-ubuntu-2404
 
       - name: Create Dockerfile
@@ -214,7 +231,24 @@ jobs:
           KUBE_VERSION: ${{ inputs.kube_version }}
           TAG_REF: ${{ github.ref_name }}
 
+      # Packer's downloader can neither resume nor retry when the caching proxy
+      # in front of the upstream mirrors truncates the image mid-transfer, so a
+      # bad transfer used to fail the whole build. Fetch a verified copy with
+      # curl first (hack/fetch-image.sh, shared byte-identical with
+      # edgestack-image-builder — the on-host image cache and its per-image
+      # locks are shared with that builder's jobs too) and point Packer at it.
+      - name: Fetch cloud image
+        run: |
+          hack/fetch-image.sh \
+            packer/qemu/qemu-rockylinux-9-uefi.json \
+            "${RUNNER_TEMP}/iso-override.json"
+
       - name: Build image
+        env:
+          # Through the environment, not the command line: the Makefile expands
+          # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
+          # the distro var file, so this override wins iso_url/iso_checksum.
+          PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
         run: make build-qemu-rockylinux-9-uefi
 
       - name: Create Dockerfile
