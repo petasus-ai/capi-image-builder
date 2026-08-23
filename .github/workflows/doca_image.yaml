@@ -124,9 +124,8 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-ubuntu-2404
-        env:
           PACKER_BUILD_TIMEOUT: 120m
+        run: make build-qemu-ubuntu-2404
 
       - name: Create Dockerfile
         run: |
@@ -248,9 +247,8 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-rockylinux-9-uefi
-        env:
           PACKER_BUILD_TIMEOUT: 120m
+        run: make build-qemu-rockylinux-9-uefi
 
       - name: Create Dockerfile
         run: |
@@ -376,9 +374,8 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-ubuntu-2404-aarch64
-        env:
           PACKER_BUILD_TIMEOUT: 120m
+        run: make build-qemu-ubuntu-2404-aarch64
 
       - name: Create Dockerfile
         run: |
@@ -500,9 +497,8 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-rockylinux-9-uefi-aarch64
-        env:
           PACKER_BUILD_TIMEOUT: 120m
+        run: make build-qemu-rockylinux-9-uefi-aarch64
 
       - name: Create Dockerfile
         run: |
