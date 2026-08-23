@@ -25,9 +25,9 @@ it). A tag without an architecture suffix is the multi-arch manifest list built
 from the per-arch tags:
 
 ```
-v1.36.3-cilium-amd64           plain, x86
-v1.36.3-doca-cilium-aarch64    NVIDIA DOCA/OFED + CUDA, arm64
-v1.36.3-cilium                 manifest list over both architectures
+v1.36.4-cilium-amd64           plain, x86
+v1.36.4-doca-cilium-aarch64    NVIDIA DOCA/OFED + CUDA, arm64
+v1.36.4-cilium                 manifest list over both architectures
 ```
 
 Consumers of these tags — the Petasus catalog in particular — parse this grammar,
@@ -305,7 +305,7 @@ fill the volume, so anything sizing a long-lived VM should add its own headroom
 (edgespray requests 20Gi for these 16Gi disks).
 
 ```bash
-skopeo inspect docker://quay.io/edgestack/ubuntu-2404-kube:v1.36.3-cilium-amd64 \
+skopeo inspect docker://quay.io/edgestack/ubuntu-2404-kube:v1.36.4-cilium-amd64 \
   | jq -r '.Labels["ai.petasus.disk"]' | jq -r .minPvcSize
 ```
 
