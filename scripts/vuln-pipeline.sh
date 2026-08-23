@@ -70,7 +70,14 @@ MAX_VULN_BYTES=$((50 * 1024 * 1024))
 # and only a new setuptools release changes what it vendors. A stale bundled
 # copy alongside a current real one (jaraco.context 5.3.0 in _vendor next to
 # 6.0.1 in dist-packages) is exactly the case that must not be "fix it" — hence
-# ALL locations must be vendored, not any.
+# ALL entries for a name+version must be vendored, not any.
+#
+# Judged from the SBOM's sourceInfo, not from .artifact.locations: this scan is
+# `grype sbom:<spdx>`, and grype reconstructs no locations from an SPDX
+# document, so the locations test could only ever answer false and every
+# build-time report shipped vendored:false. The mirror's daily re-scan
+# (edgestack-image-sbom bin/refresh-vulns.sh) already judges it this way and
+# quietly repaired the flag a day later; keep the two expressions identical.
 #
 # artifact.frozen marks a package the image's upgrade-freeze policy pins in
 # place (FREEZE_PKG_REGEX, supply-chain.conf): kernel, accelerator stack, and
@@ -104,8 +111,7 @@ VULN_PROJECT='{
       dataSource: .vulnerability.dataSource
     },
     artifact: {name: .artifact.name, version: .artifact.version, type: .artifact.type,
-      vendored: ((((.artifact.locations // []) | length) > 0)
-                 and ((.artifact.locations // []) | all(.path | test("/_vendor/")))),
+      vendored: ($vend[.artifact.name + "|" + .artifact.version] // false),
       frozen: (if $isfrozen then (.artifact.name | test($frz)) else false end)}
   }]
 }'
@@ -205,6 +211,14 @@ cmd_run() {
   avail=$("$(dirname "${BASH_SOURCE[0]}")/distro-fix-check.sh" "$repo" "$raw" || echo '{}')
   echo "$avail" | jq -e 'type == "object"' >/dev/null 2>&1 || avail='{}'
 
+  # name|version → bundled-copy judgment for artifact.vendored (see
+  # VULN_PROJECT). Fails soft to {} — every finding then stays vendored:false.
+  local vend
+  vend=$(jq -c '[.packages[]? | select(.sourceInfo)
+      | {k: (.name + "|" + (.versionInfo // "")), v: (.sourceInfo | contains("/_vendor/"))}]
+    | group_by(.k) | map({key: .[0].k, value: (map(.v) | all)}) | from_entries' "$sbom" 2>/dev/null || echo '{}')
+  echo "$vend" | jq -e 'type == "object"' >/dev/null 2>&1 || vend='{}'
+
   # Is this image under the upgrade-freeze policy? Judged from the SBOM (see
   # VULN_PROJECT). Fails soft to false — the report then simply predates the
   # frozen field's semantics, same as an unset FREEZE_MARKER_REGEX.
@@ -216,7 +230,7 @@ cmd_run() {
   fi
 
   # Project to the portal contract (see VULN_PROJECT) before publishing.
-  jq -c --argjson av "$avail" --argjson isfrozen "$isfrozen" \
+  jq -c --argjson av "$avail" --argjson vend "$vend" --argjson isfrozen "$isfrozen" \
     --arg frz "${FREEZE_PKG_REGEX:-^$}" "$VULN_PROJECT" "$raw" > "$vuln"
 
   local size count built raw_size
@@ -227,6 +241,7 @@ cmd_run() {
   log "vuln report: ${count} matches, DB built ${built:-unknown}, ${size} bytes (raw ${raw_size})"
   log "severity: $(jq -rc '[.matches[].vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add // {}' "$vuln")"
   log "fixed-but-not-yet-in-this-distro: $(jq '[.matches[] | select(.vulnerability.fix.availableInDistro == false)] | length' "$vuln")"
+  log "bundled copies (vendor rebuild to fix): $(jq '[.matches[] | select(.artifact.vendored)] | length' "$vuln")"
   log "frozen by upgrade policy (rebuild to fix): $(jq '[.matches[] | select(.artifact.frozen)] | length' "$vuln")"
   [[ "$size" -le "$MAX_VULN_BYTES" ]] || die "report is ${size} bytes (>${MAX_VULN_BYTES}) — size policy needs renegotiation"
 
