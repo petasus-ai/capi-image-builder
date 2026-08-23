@@ -12,6 +12,10 @@ name: Auto-remediate degraded images
 # Ships in DRY RUN: it only maintains the `auto-remediate` tracking issue.
 # Go live by setting the repository variable AUTO_REMEDIATE_DRY_RUN=false
 # (no commit needed); setting it back to true pauses dispatching again.
+#
+# ignore_cooldown is the manual catch-up lever: a dispatch that is recorded
+# but whose build never publishes leaves the combo hidden for the full
+# cooldown window, and this re-fires it without waiting.
 
 on:
   schedule:
@@ -31,6 +35,12 @@ on:
         description: 'Maximum build dispatches this run'
         required: true
         default: '4'
+      ignore_cooldown:
+        description: 'Dispatch even combos still inside their cooldown window'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
 
 # contents: write force-pushes the cooldown state to its own single-commit
 # branch (auto-remediate-state — never the default branch, which must not
@@ -71,4 +81,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run || vars.AUTO_REMEDIATE_DRY_RUN || 'true' }}
           MAX_DISPATCH: ${{ github.event.inputs.max_dispatch || '4' }}
+          # No vars.* fallback on purpose: the override is a one-run manual
+          # escape hatch, so a scheduled run can never inherit it.
+          IGNORE_COOLDOWN: ${{ github.event.inputs.ignore_cooldown || 'false' }}
         run: bash scripts/auto-remediate.sh

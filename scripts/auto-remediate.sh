@@ -23,7 +23,8 @@
 # Safety rails:
 #   MAX_DISPATCH     dispatches per run; one dispatch builds BOTH arches
 #   COOLDOWN_HOURS   per-combo; a rebuild that fails to clear its findings
-#                    must not retry daily forever
+#                    must not retry daily forever. IGNORE_COOLDOWN lifts it
+#                    for a single manual run
 #   busy hold        per workflow, snapshotted before dispatching (same
 #                    pattern as auto-kube-release.yaml): a combo whose
 #                    workflow already has runs queued/in progress is skipped,
@@ -31,7 +32,13 @@
 #   DRY_RUN          report via issue only; flip the AUTO_REMEDIATE_DRY_RUN
 #                    repo variable to "false" to go live
 #
-# Env:  DRY_RUN (true) · MAX_DISPATCH (4) · COOLDOWN_HOURS (72)
+# Env:  DRY_RUN (true) · MAX_DISPATCH (4) · COOLDOWN_HOURS (48)
+#       IGNORE_COOLDOWN dispatch combos that are still inside their cooldown
+#                       window (false). For catching up by hand when a
+#                       dispatch was recorded but the build never published —
+#                       the cooldown then hides a failed rebuild for its full
+#                       window. Deliberately not readable from a repo
+#                       variable: a standing override would retire the rail.
 #       STATE_BRANCH    branch holding the combo -> last-dispatch record
 #                       (auto-remediate-state). Kept OFF the default branch
 #                       and always exactly one parentless commit, force-pushed
@@ -51,7 +58,10 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 DRY_RUN="${DRY_RUN:-true}"
 MAX_DISPATCH="${MAX_DISPATCH:-4}"
-COOLDOWN_HOURS="${COOLDOWN_HOURS:-72}"
+COOLDOWN_HOURS="${COOLDOWN_HOURS:-48}"
+IGNORE_COOLDOWN="${IGNORE_COOLDOWN:-false}"
+# Normalised to a bare true/false: both values below are fed to jq --argjson.
+[[ "$IGNORE_COOLDOWN" == "true" ]] || IGNORE_COOLDOWN=false
 STATE_BRANCH="${STATE_BRANCH-auto-remediate-state}"
 REPO_SLUG="${GITHUB_REPOSITORY:-$BUILDER_REPO}"
 TOKEN="${GITHUB_TOKEN:-}"
@@ -176,9 +186,14 @@ candidates=$(cat "$WORK/grades.jsonl" "$WORK/meta.jsonl" | jq -s \
   | sort_by(.critical, .high) | reverse')
 
 n_all=$(echo "$candidates" | jq 'length')
-eligible=$(echo "$candidates" | jq --argjson max "$MAX_DISPATCH" '[.[] | select(.cooling | not)][:$max]')
+# .cooling stays the true cooldown state even under the override, so the
+# report can still say which combos were dispatched early.
+eligible=$(echo "$candidates" | jq --argjson max "$MAX_DISPATCH" --argjson ignore "$IGNORE_COOLDOWN" \
+  '[.[] | select($ignore or (.cooling | not))][:$max]')
 n_eligible=$(echo "$eligible" | jq 'length')
-log "combos needing a rebuild: ${n_all} (dispatching up to ${n_eligible})"
+note=""
+[[ "$IGNORE_COOLDOWN" == "true" ]] && note=", cooldown overridden"
+log "combos needing a rebuild: ${n_all} (dispatching up to ${n_eligible}${note})"
 
 # ---- per-workflow busy hold, snapshotted before the loop --------------------
 # Same reasoning as auto-kube-release.yaml: a build in flight has not
@@ -239,7 +254,7 @@ if [[ -z "$TOKEN" ]]; then
 elif [[ "$DRY_RUN" == "true" ]]; then
   mode="DRY RUN — no builds dispatched"
 elif [[ "$dispatched" -gt 0 ]]; then
-  mode="LIVE — dispatched ${dispatched} build(s)"
+  mode="LIVE — dispatched ${dispatched} build(s)${note}"
 elif [[ "$n_eligible" -gt 0 ]]; then
   mode="LIVE — nothing dispatched (${n_eligible} eligible: workflow busy or dispatch failed, see log)"
 elif [[ "$n_all" -gt 0 ]]; then
@@ -248,8 +263,13 @@ else
   mode="LIVE — no image needs a rebuild"
 fi
 
-rows=$(echo "$candidates" | jq -r '.[] |
-  "| \(.os) | \(.kube_version)\(if .flavour == "-doca" then " doca" else "" end) | \(.grade) | \(.critical) | \(.high) | \(.cves | join(", ")) | \(if .cooling then "cooling down" else "ready" end) |"')
+rows=$(echo "$candidates" | jq -r --argjson ignore "$IGNORE_COOLDOWN" '.[] |
+  "| \(.os) | \(.kube_version)\(if .flavour == "-doca" then " doca" else "" end) | \(.grade) | \(.critical) | \(.high) | \(.cves | join(", ")) | \(if .cooling | not then "ready" elif $ignore then "cooling down (overridden)" else "cooling down" end) |"')
+
+ignore_note=""
+if [[ "$IGNORE_COOLDOWN" == "true" ]]; then
+  ignore_note=$'\n  **IGNORE_COOLDOWN was set for this run**, so combos still inside their\n  window were dispatched anyway; the cooldown clock restarts for them.'
+fi
 
 body=$(cat <<EOF
 **${mode}** — $(date -u +%FT%TZ), formula: \`scripts/grade.mjs\` (portal formula v1, vendored)
@@ -265,7 +285,7 @@ ${rows:-| _none_ | | | | | | |}
 
 - One dispatch builds **both architectures** of a combo.
 - Cap ${MAX_DISPATCH}/run, cooldown ${COOLDOWN_HOURS}h per combo; a combo whose
-  workflow is already building is held for the next run.
+  workflow is already building is held for the next run.${ignore_note}
 - Go live / pause: set repository variable \`AUTO_REMEDIATE_DRY_RUN\` to
   \`false\` / \`true\`. Cooldown state: \`${STATE_BRANCH:-<disabled>}\` branch.
 EOF

@@ -416,12 +416,20 @@ with edgestack-image-builder. A portal change to the formula must be mirrored
 into both copies, bumping `GRADE_FORMULA_VERSION` everywhere; verify a sync by
 diffing the CLIs' output on the same reports.
 
-Safety rails: at most `MAX_DISPATCH` (4) dispatches per run, a 72h per-combo
+Safety rails: at most `MAX_DISPATCH` (4) dispatches per run, a 48h per-combo
 cooldown (force-pushed as the single-commit `auto-remediate-state` branch, so
 no history accumulates on master), and
 a per-workflow busy hold snapshotted before dispatching — same pattern as
 `auto-kube-release.yaml`. `-cilium` tags never match (that branch owns its own
 schedule) and `EXCLUDE_KEY_REGEX` can retire combos from the loop.
+
+The cooldown records the *dispatch*, not the rebuild, so a build that fails
+or never starts leaves its combo listed-but-skipped for the full window. The
+`ignore_cooldown` workflow input (default `false`) is the catch-up lever for
+exactly that case: it re-dispatches combos still inside their window, and the
+tracking issue marks them `cooling down (overridden)`. It is manual-only —
+there is no repository-variable fallback, so a scheduled run always keeps the
+cooldown.
 
 **Ships in dry-run**: it only maintains the `auto-remediate` tracking issue
 (closed automatically when everything grades clean). Go live by setting the
