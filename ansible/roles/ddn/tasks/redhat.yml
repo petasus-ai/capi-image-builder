@@ -10,11 +10,21 @@
   - libyaml-devel
   - git
 
+# The repo carries prebuilt binary packages, so the transfer is large and the
+# guest reaches GitHub through packer's SNAT, which drops long transfers now and
+# then (early EOF mid-clone). depth:1 skips the history of superseded packages
+# to shrink that window, and since a failed `git clone` removes its destination,
+# the retries start clean.
 - name: Clone pre-built lustre repository
   git:
     repo: "{{ lustre_repo }}"
     dest: /tmp/prebuilt-lustre
     version: main
+    depth: 1
+  register: lustre_clone
+  retries: 3
+  delay: 10
+  until: lustre_clone is succeeded
 
 - name: Find lustre dkms module rpm files in /tmp folder
   find:
