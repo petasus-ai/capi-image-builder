@@ -44,7 +44,7 @@
     executable: /bin/bash
   register: _old_kernels_el
   changed_when: false
-  when: ansible_os_family == "RedHat" or ansible_os_family == "Rocky"
+  when: ansible_os_family == "RedHat"
 
 - name: Collect the removal list
   set_fact:
@@ -123,7 +123,7 @@
     autoremove: no
     lock_timeout: 60
   when:
-    - ansible_os_family == "RedHat" or ansible_os_family == "Rocky"
+    - ansible_os_family == "RedHat"
     - _kernels_to_remove | length > 0
 
 - name: Verify the running kernel survived

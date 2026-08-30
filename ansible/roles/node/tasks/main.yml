@@ -21,6 +21,17 @@
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
+# EL10 moved br_netfilter from kernel-modules-core into kernel-modules-extra,
+# which the GenericCloud images do not ship. Pin to the running kernel so dnf
+# cannot resolve the bare name to a newer kernel than the one the image boots.
+- name: Install kernel-modules-extra for br_netfilter (EL10+)
+  dnf:
+    name: "kernel-modules-extra-{{ ansible_kernel }}"
+    state: present
+  when:
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version | int >= 10
+
 - name: Ensure overlay module is present
   modprobe:
     name: overlay

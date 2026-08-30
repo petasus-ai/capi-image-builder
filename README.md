@@ -15,7 +15,7 @@ unused: this fork builds the QEMU targets only.
 | Registry repository | Guest OS | Architectures |
 |---|---|---|
 | `quay.io/edgestack/ubuntu-2404-kube` | Ubuntu 24.04 | `amd64`, `aarch64` |
-| `quay.io/edgestack/rocky-9-uefi-kube` | Rocky Linux 9 (UEFI) | `amd64`, `aarch64` |
+| `quay.io/edgestack/rocky-10-uefi-kube` | Rocky Linux 10 (UEFI) | `amd64`, `aarch64` |
 
 **Tag grammar:** `v<major>.<minor>.<patch>[-<accelerator>]-cilium-<arch>`, where
 the version is the Kubernetes version the image ships, the accelerator is `doca`
@@ -45,7 +45,7 @@ tags are dropped from the catalog UI rather than rendered.
 **Guest**
 
 * Ubuntu 24.04 (x86, ARM)
-* Rocky Linux 9 (x86, ARM)
+* Rocky Linux 10 (x86, ARM)
 
 Base images are not pinned to a build date. The var files under `packer/qemu/`
 point at the distros' latest channels — Ubuntu `releases/noble/release/`, Rocky
@@ -74,8 +74,8 @@ then installs the `qemu`, `ansible` and `goss` plugins at pinned versions into
 ```bash
 make build-qemu-ubuntu-2404             # Ubuntu 24.04, x86
 make build-qemu-ubuntu-2404-aarch64     # Ubuntu 24.04, arm64
-make build-qemu-rockylinux-9-uefi       # Rocky 9, x86
-make build-qemu-rockylinux-9-uefi-aarch64
+make build-qemu-rockylinux-10-uefi      # Rocky 10, x86
+make build-qemu-rockylinux-10-uefi-aarch64
 make build-qemu-amd64-all               # every x86 target
 ```
 

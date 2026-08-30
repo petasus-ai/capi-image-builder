@@ -72,7 +72,7 @@ EXCLUDE_KEY_REGEX="${EXCLUDE_KEY_REGEX:-}"
 # Image repository -> the `os` input the build workflows expect, and tag
 # flavour -> owning workflow. Keep in sync with scripts/pending-kube-builds.py
 # (IMAGE_REPOS / FLAVOURS there).
-REPO_LIST=(${AUTO_REPO_LIST:-ubuntu-2404-kube:ubuntu rocky-9-uefi-kube:rocky})
+REPO_LIST=(${AUTO_REPO_LIST:-ubuntu-2404-kube:ubuntu rocky-10-uefi-kube:rocky})
 flavour_workflow() { [[ "$1" == "-doca" ]] && echo "doca_image.yaml" || echo "main.yaml"; }
 
 [[ -n "$TOKEN" ]] || DRY_RUN=true

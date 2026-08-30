@@ -151,11 +151,11 @@ ABSOLUTE_PACKER_VAR_FILES := $(foreach f,$(abspath $(PACKER_VAR_FILES)),-var-fil
 ## --------------------------------------
 ## Platform and version combinations
 ## --------------------------------------
-ROCKYLINUX_VERSIONS     :=  rockylinux-9-uefi
+ROCKYLINUX_VERSIONS		:=	rockylinux-10-uefi
 UBUNTU_VERSIONS			:=	ubuntu-2404
 
-QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-9-uefi
-QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-9-uefi-aarch64
+QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-10-uefi
+QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-10-uefi-aarch64
 
 ## --------------------------------------
 ## Dynamic build targets
@@ -197,7 +197,7 @@ $(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
 # Keyed on packer's build_name (packer/qemu/*.json), which is what names the output
 # directory: both architectures share one, and it carries neither the -uefi nor the
 # -aarch64 suffix the build targets do.
-QEMU_OUTPUT_NAMES := ubuntu-2404 rockylinux-9
+QEMU_OUTPUT_NAMES := ubuntu-2404 rockylinux-10
 QEMU_CLEAN_TARGETS := $(addprefix clean-qemu-,$(QEMU_OUTPUT_NAMES))
 .PHONY: $(QEMU_CLEAN_TARGETS)
 $(QEMU_CLEAN_TARGETS):
@@ -209,8 +209,8 @@ $(QEMU_CLEAN_TARGETS):
 ##@ Builds
 build-qemu-ubuntu-2404: ## Builds Ubuntu 24.04 QEMU image
 build-qemu-ubuntu-2404-aarch64: ## Builds Ubuntu 24.04 arm QEMU image
-build-qemu-rockylinux-9-uefi: ## Builds Rocky 8 UEFI QEMU image
-build-qemu-rockylinux-9-uefi-aarch64: ## Builds Rocky 8 UEFI arm QEMU image
+build-qemu-rockylinux-10-uefi: ## Builds Rocky Linux 10 UEFI QEMU image
+build-qemu-rockylinux-10-uefi-aarch64: ## Builds Rocky Linux 10 UEFI arm QEMU image
 build-qemu-amd64-all: $(QEMU_AMD64_BUILD_TARGETS) ## Builds all amd64 Qemu images
 build-qemu-arm64-all: $(QEMU_ARM64_BUILD_TARGETS) ## Builds all arm64 Qemu images
 build-qemu-all: $(QEMU_AMD64_BUILD_TARGETS) $(QEMU_ARM64_BUILD_TARGETS) ## Builds all Qemu images
@@ -221,8 +221,8 @@ build-qemu-all: $(QEMU_AMD64_BUILD_TARGETS) $(QEMU_ARM64_BUILD_TARGETS) ## Build
 ##@ Validate packer config
 validate-qemu-ubuntu-2404: ## Validates Ubuntu 24.04 QEMU image packer config
 validate-qemu-ubuntu-2404-aarch64: ## Validates Ubuntu 24.04 QEMU image packer config
-validate-qemu-rockylinux-9-uefi: ## Validates Rocky Linux 8 UEFI QEMU image packer config
-validate-qemu-rockylinux-9-uefi-aarch64: ## Validates Rocky Linux 8 UEFI QEMU image packer config
+validate-qemu-rockylinux-10-uefi: ## Validates Rocky Linux 10 UEFI QEMU image packer config
+validate-qemu-rockylinux-10-uefi-aarch64: ## Validates Rocky Linux 10 UEFI arm QEMU image packer config
 validate-qemu-all: $(QEMU_AMD64_VALIDATE_TARGETS) $(QEMU_ARM64_VALIDATE_TARGETS) ## Validates all Qemu Packer config
 
 validate-all: validate-qemu-all

@@ -21,7 +21,7 @@
 # up with an empty result, which is treated as nothing to check.
 
 - import_tasks: redhat.yml
-  when: ansible_os_family == "RedHat" or ansible_os_family == "Rocky"
+  when: ansible_os_family == "RedHat"
 
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"

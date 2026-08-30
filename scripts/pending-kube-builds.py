@@ -55,7 +55,7 @@ HTTP_TIMEOUT = 60
 # Image repository -> the `os` input the build workflows expect.
 IMAGE_REPOS = (
     ("ubuntu-2404-kube", "ubuntu"),
-    ("rocky-9-uefi-kube", "rocky"),
+    ("rocky-10-uefi-kube", "rocky"),
 )
 
 # Tag flavour suffix -> the workflow file that produces it. Declaration order is

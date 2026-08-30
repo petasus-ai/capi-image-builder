@@ -18,16 +18,13 @@
 - import_tasks: kernel_cleanup.yml
   when:
     - sysprep_remove_old_kernels | bool
-    - ansible_os_family in ["Debian", "RedHat", "Rocky"]
+    - ansible_os_family in ["Debian", "RedHat"]
 
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
-
-- import_tasks: redhat.yml
-  when: ansible_os_family == "Rocky"
 
 - name: Remove containerd http proxy conf file if needed
   file:

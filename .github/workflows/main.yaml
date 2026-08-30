@@ -182,8 +182,7 @@ jobs:
           vuln-force: ${{ github.event.inputs.vuln_force }}
           provenance-strict: ${{ github.event.inputs.provenance_strict }}
           provenance-force: ${{ github.event.inputs.provenance_force }}
-
-  build-rockylinux-9-amd64:
+  build-rockylinux-10-amd64:
     if: ${{ github.event.inputs.os == 'rocky' || github.event.inputs.os == 'all' }}
     runs-on:
       - self-hosted
@@ -241,7 +240,7 @@ jobs:
       - name: Fetch cloud image
         run: |
           hack/fetch-image.sh \
-            packer/qemu/qemu-rockylinux-9-uefi.json \
+            packer/qemu/qemu-rockylinux-10-uefi.json \
             "${RUNNER_TEMP}/iso-override.json"
 
       - name: Build image
@@ -250,22 +249,22 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-rockylinux-9-uefi
+        run: make build-qemu-rockylinux-10-uefi
 
       - name: Create Dockerfile
         run: |
-          cat << EOF > output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          cat << EOF > output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
           FROM alpine
-          ADD rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          ADD rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
           EOF
 
       - name: Build & push container image
         run: |
-          COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          COMPONENTS="$(cat output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
           # have to know packer's disk_size. Packer names the disk after its own
           # output directory and gives it no extension, hence the basename.
-          BUILD_DIR="output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}"
+          BUILD_DIR="output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}"
           DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
@@ -278,22 +277,22 @@ jobs:
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-amd64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
+          sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
-          image: quay.io/edgestack/rocky-9-uefi-kube
+          image: quay.io/edgestack/rocky-10-uefi-kube
           tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
-          build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
-          image-repo: rocky-9-uefi-kube
+          build-dir: output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: rocky-10-uefi-kube
           tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
@@ -304,7 +303,6 @@ jobs:
           vuln-force: ${{ github.event.inputs.vuln_force }}
           provenance-strict: ${{ github.event.inputs.provenance_strict }}
           provenance-force: ${{ github.event.inputs.provenance_force }}
-
   build-ubuntu-2404-arm64:
     if: ${{ github.event.inputs.os == 'ubuntu' || github.event.inputs.os == 'all' }}
     runs-on:
@@ -426,8 +424,7 @@ jobs:
           vuln-force: ${{ github.event.inputs.vuln_force }}
           provenance-strict: ${{ github.event.inputs.provenance_strict }}
           provenance-force: ${{ github.event.inputs.provenance_force }}
-
-  build-rockylinux-9-arm64:
+  build-rockylinux-10-arm64:
     if: ${{ github.event.inputs.os == 'rocky' || github.event.inputs.os == 'all' }}
     runs-on:
       - self-hosted
@@ -485,7 +482,7 @@ jobs:
       - name: Fetch cloud image
         run: |
           hack/fetch-image.sh \
-            packer/qemu/qemu-rockylinux-9-uefi-aarch64.json \
+            packer/qemu/qemu-rockylinux-10-uefi-aarch64.json \
             "${RUNNER_TEMP}/iso-override.json"
 
       - name: Build image
@@ -494,22 +491,22 @@ jobs:
           # PACKER_VAR_FILES into ABSOLUTE_PACKER_VAR_FILES and appends it after
           # the distro var file, so this override wins iso_url/iso_checksum.
           PACKER_VAR_FILES: ${{ runner.temp }}/iso-override.json
-        run: make build-qemu-rockylinux-9-uefi-aarch64
+        run: make build-qemu-rockylinux-10-uefi-aarch64
 
       - name: Create Dockerfile
         run: |
-          cat << EOF > output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
+          cat << EOF > output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/Dockerfile
           FROM arm64v8/alpine
-          ADD rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
+          ADD rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }} /disk/
           EOF
 
       - name: Build & push container image
         run: |
-          COMPONENTS="$(cat output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
+          COMPONENTS="$(cat output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
           # have to know packer's disk_size. Packer names the disk after its own
           # output directory and gives it no extension, hence the basename.
-          BUILD_DIR="output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}"
+          BUILD_DIR="output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}"
           DISK="$(scripts/disk-metadata.sh "${BUILD_DIR}/$(basename "${BUILD_DIR}")")"
           # org.opencontainers.image.source is deliberately omitted: it would point at
           # the private builder repo, so the portal would render a link that 404s for
@@ -522,22 +519,22 @@ jobs:
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
-            --tag quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
+            --tag quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
           sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-9-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
+          sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
 
       - name: Create container image manifests
         continue-on-error: true
         uses: ./.github/actions/manifest
         with:
-          image: quay.io/edgestack/rocky-9-uefi-kube
+          image: quay.io/edgestack/rocky-10-uefi-kube
           tag: ${{ steps.patch-version.outputs.kube-version }}-cilium
 
       - name: SBOM, vulnerability report and provenance
         uses: ./.github/actions/supply-chain
         with:
-          build-dir: output/rockylinux-9-kube-${{ steps.patch-version.outputs.kube-version }}
-          image-repo: rocky-9-uefi-kube
+          build-dir: output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
+          image-repo: rocky-10-uefi-kube
           tag: ${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
           mirror-token: ${{ secrets.MY_TOKEN }}
           quay-username: ${{ secrets.QUAY_USER_NAME }}
