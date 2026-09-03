@@ -4,7 +4,7 @@
       when: ansible_os_family == "RedHat"
 
     - include_tasks: deb_ipvs.yml
-      when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
+      when: ansible_os_family == "Debian"
 
     - name: Enable kernel modules
       template:

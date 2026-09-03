@@ -2,18 +2,6 @@
 # Read-only. The upgrade that installs a newer kernel runs before this playbook,
 # in scripts/upgrade-kernel.sh — see main.yml for why it cannot run here.
 
-# The kernel package layout differs by EL generation:
-#   EL7 / Amazon Linux 2 -- a single monolithic `kernel` package
-#   EL8                  -- kernel + kernel-core + kernel-modules
-#   EL9+                 -- the above plus kernel-modules-core
-# Only the package the version is read from matters here, so the split is
-# detected rather than assumed.
-- name: Detect whether this EL generation splits the kernel package
-  set_fact:
-    _el_kernel_split: >-
-      {{ ansible_distribution != "Amazon"
-         and ansible_distribution_major_version | int >= 8 }}
-
 # Register a FAMILY-SPECIFIC variable, never a shared one: main.yml imports both
 # redhat.yml and debian.yml, and a skipped task still runs its `register`,
 # clobbering a shared name with a stdout-less skip result. rpm's
@@ -23,7 +11,7 @@
 - name: Find the newest installed kernel
   shell: >-
     set -o pipefail;
-    rpm -q {{ 'kernel-core' if _el_kernel_split | bool else 'kernel' }}
+    rpm -q kernel-core
     --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -1
   args:
     executable: /bin/bash

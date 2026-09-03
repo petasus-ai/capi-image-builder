@@ -38,16 +38,6 @@
         regexp: 'pam_unix.so obscure sha512'
         replace: 'pam_unix.so obscure minlen=8 sha512'
 
-    - name: Configure account fail2lock settings
-      lineinfile:
-        dest: /etc/pam.d/common-auth
-        insertafter: EOF
-        line: "{{ item }}"
-      with_items:
-        - "auth       required   pam_faillock.so deny=10 unlock_time=3600"
-        - "account    required   pam_faillock.so"
-      when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "22.04"
-
     - name: Remove SUID, SGID of system binaries
       file:
         path: "{{ item }}"

@@ -1,5 +1,4 @@
 {
-  "build_target": "virt",
   "disable_public_repos": "false",
   "extra_debs": "",
   "extra_repos": "",

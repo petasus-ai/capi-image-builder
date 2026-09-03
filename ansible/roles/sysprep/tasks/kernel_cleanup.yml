@@ -70,13 +70,7 @@
   shell: |
     set -o pipefail
     if command -v rpm >/dev/null 2>&1; then
-      # kernel-core exists on EL8+; EL7 and Amazon Linux 2 ship a monolithic
-      # `kernel` package instead.
-      if rpm -q kernel-core >/dev/null 2>&1; then
-        rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n'
-      else
-        rpm -q kernel --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n'
-      fi
+      rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n'
     else
       dpkg-query -W -f='${Package}\n' 'linux-image-*' 2>/dev/null \
         | sed -E 's/^linux-image-(unsigned-)?//' | grep -E '^[0-9]'

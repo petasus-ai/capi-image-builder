@@ -12,39 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ---
-- include_tasks: aws.yml
-  when: packer_builder_type.startswith('amazon')
-
-- include_tasks: azure.yml
-  when: packer_builder_type.startswith('azure')
-
-- include_tasks: vmware.yml
-  when: packer_builder_type is search('vmware') or
-    packer_builder_type is search('vsphere')
-
-- include_tasks: googlecompute.yml
-  when: packer_builder_type.startswith('googlecompute')
-
-- include_tasks: oci.yml
-  when: packer_builder_type.startswith('oracle-oci')
-
 - include_tasks: qemu.yml
-  when: packer_builder_type is search('qemu') and
-    build_target is not search('raw')
-
-- include_tasks: raw.yml
-  when: packer_builder_type is search('qemu') and 
-    build_target is search('raw')
-
-- include_tasks: vmware-photon.yml
-  when: (packer_builder_type is search('vmware') or
-    packer_builder_type is search('vsphere')) and
-    ansible_os_family == "VMware Photon OS"
-
-- include_tasks: vmware-ubuntu.yml
-  when: (packer_builder_type is search('vmware') or
-    packer_builder_type is search('vsphere')) and
-    ansible_distribution == "Ubuntu"
 
 # Create a boot order configuration
 # b/w containerd and cloud final, cloud config services
@@ -75,7 +43,6 @@
     group: root
     mode: "0755"
 
-# Some OS might disable cloud-final service on boot (rhel 7).
 # Enable all cloud-init services on boot.
 - name: Make sure all cloud init services are enabled
   service:
@@ -86,7 +53,6 @@
     - cloud-config
     - cloud-init
     - cloud-init-local
-  when: ansible_os_family != "Flatcar"
 
 - name: Create cloud-init config file
   copy:
@@ -95,7 +61,6 @@
     owner: root
     group: root
     mode: 0644
-  when: ansible_os_family != "Flatcar"
 
 - name: set cloudinit feature flags
   copy:
@@ -105,15 +70,3 @@
     group: root
     mode: 0644
   when: ansible_os_family == "Debian"
-
-- name: Ensure chrony is running
-  systemd:
-    enabled: yes
-    state: started
-    daemon_reload: yes
-    name: chronyd
-  when: (packer_builder_type.startswith('amazon') or
-    packer_builder_type.startswith('azure') or
-    packer_builder_type is search('vmware') or
-    packer_builder_type is search('vsphere')) and
-    ansible_os_family != "Flatcar"

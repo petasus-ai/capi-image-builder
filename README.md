@@ -7,9 +7,6 @@ kubeadm-ready node, and CI wraps the resulting qcow2 in a container-disk image a
 publishes it together with an SBOM, a vulnerability report and a signed provenance
 attestation.
 
-Upstream's provider matrix (AWS, Azure, vSphere, OCI, …) is left in the tree but
-unused: this fork builds the QEMU targets only.
-
 ## What It Builds
 
 | Registry repository | Guest OS | Architectures |
@@ -108,11 +105,10 @@ editing the committed files.
 setup*                repos, dist-upgrade, base packages
 node                  sysctls, kernel modules, swap off, auditd
 kernel                asserts the guest booted the newest kernel
-providers                                    ← every kmod build below targets it
+providers             cloud-init packages and service boot ordering
 containerd
 kubernetes            kubelet/kubeadm/kubectl; pre-pulls the control-plane images
 load_additional_…     optional extra images and executables
-<custom roles>        optional, via custom_role_names
 cni
 addons
 security
@@ -427,61 +423,23 @@ and `docker`.
 ## CI Workflows
 
 The build workflows run on self-hosted Linux runners (x64 and arm64) and are
-triggered either by `workflow_dispatch` or by pushing a `v*.*.*` tag, in which
-case the tag name is the Kubernetes version to build.
+triggered by `workflow_dispatch`.
 
 | Workflow | Builds |
 |---|---|
 | `main.yaml` | plain images (`-cilium` tags), both distros and architectures |
 | `doca_image.yaml` | `-doca-cilium` variants (`accel_provider=nvidia`) |
-| `auto-kube-release.yaml` | nothing — daily detector that dispatches the two build workflows when upstream publishes a Kubernetes patch we have not built (`scripts/pending-kube-builds.py`) |
-| `auto-remediate.yaml` | nothing — daily detector that dispatches rebuilds for images whose readiness grade a rebuild would restore (see below) |
 | `check-sigstore-egress.yaml` | pre-flight: can the runners reach Fulcio, Rekor and the TUF CDN? Read-only, credential-free, no signing |
 
 Each build job produces the qcow2, wraps it in an Alpine-based container-disk
 image carrying the labels described above, pushes the per-arch tag, amends the
 multi-arch manifest list, and then runs the supply-chain action.
 
-### Auto-Remediation (rebuild-to-patch)
-
-`auto-remediate.yaml` (daily, after the SBOM mirror's re-scan) runs
-`scripts/auto-remediate.sh` — the security twin of `auto-kube-release.yaml`:
-that one rebuilds because upstream Kubernetes moved, this one rebuilds because
-the distro shipped a security fix the image lacks. It grades the **newest
-patch of every published series** (per distro and flavour; older patches stay
-published but are not what operators deploy) with `scripts/grade.mjs` and
-dispatches `main.yaml` / `doca_image.yaml` for combos with actionable
-Critical/High findings. Since the vulnerability pipeline reports
-`fix.availableInDistro`, those are by construction findings whose fix the
-distro really publishes — a rebuild is guaranteed to clear them, republish the
-tags, and stand the loop down.
-
-`grade.mjs` is a **vendored, dependency-free copy of the catalog portal's
-grading formula** (`petasus-image-catalog`: `vuln.ts` fold/track +
-`readiness.ts` ladders + `grade-summary.ts` projection), shared byte-identical
-with edgestack-image-builder. A portal change to the formula must be mirrored
-into both copies, bumping `GRADE_FORMULA_VERSION` everywhere; verify a sync by
-diffing the CLIs' output on the same reports.
-
-Safety rails: at most `MAX_DISPATCH` (4) dispatches per run, a 48h per-combo
-cooldown (force-pushed as the single-commit `auto-remediate-state` branch, so
-no history accumulates on master), and
-a per-workflow busy hold snapshotted before dispatching — same pattern as
-`auto-kube-release.yaml`. `-cilium` tags never match (that branch owns its own
-schedule) and `EXCLUDE_KEY_REGEX` can retire combos from the loop.
-
-The cooldown records the *dispatch*, not the rebuild, so a build that fails
-or never starts leaves its combo listed-but-skipped for the full window. The
-`ignore_cooldown` workflow input (default `false`) is the catch-up lever for
-exactly that case: it re-dispatches combos still inside their window, and the
-tracking issue marks them `cooling down (overridden)`. It is manual-only —
-there is no repository-variable fallback, so a scheduled run always keeps the
-cooldown.
-
-**Ships in dry-run**: it only maintains the `auto-remediate` tracking issue
-(closed automatically when everything grades clean). Go live by setting the
-repository variable `AUTO_REMEDIATE_DRY_RUN=false`; set it back to `true` to
-pause. No secrets beyond the built-in `GITHUB_TOKEN`.
+The two daily detectors that dispatch rebuilds — `auto-kube-release.yaml` when
+upstream publishes a Kubernetes patch, `auto-remediate.yaml` when a distro ships
+a security fix — live on `master`. `on: schedule` fires only from the default
+branch, and both match bare `-amd64`/`-aarch64` tags, deliberately skipping the
+`-cilium` tags this branch publishes. Builds here are dispatched by hand.
 
 ## Repository Layout
 
@@ -491,9 +449,6 @@ packer/qemu/        per-target Packer var files + packer.json
 packer/config/      component versions shared by every build
 packer/goss/        post-build test specs
 scripts/            supply-chain pipelines and CI helpers
-hack/               dependency bootstrapping
+hack/               dependency and Packer plugin bootstrapping
 .github/            build workflows and the supply-chain composite action
 ```
-
-`README-flatcar.md` documents the inherited Flatcar path, which this fork does not
-build.

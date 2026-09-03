@@ -28,8 +28,8 @@ inputs:
     description: Registry password, for cosign login.
     required: true
   # The strict toggles default to failing the job, and treat any value other
-  # than the literal 'false' as strict — a tag push supplies no workflow inputs
-  # at all, and an empty string must not silently downgrade to best-effort.
+  # than the literal 'false' as strict: an empty or unset input must not
+  # silently downgrade the job to best-effort.
   sbom-strict:
     description: Fail the job when the SBOM stage fails (the image push is unaffected).
     default: 'true'

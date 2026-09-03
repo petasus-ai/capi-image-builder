@@ -46,9 +46,6 @@ on:
         required: true
         default: false
         type: boolean
-  push:
-    tags:
-      - v*.*.*
 # Per-attempt packer build timeout (healthy QEMU builds run ~20 min). A stalled SNAT is
 # killed at this bound so the job fails fast for a manual re-run.
 env:
@@ -80,15 +77,10 @@ jobs:
       - name: Patch K8S Version
         id: patch-version
         run: |
-          if [ -z "$KUBE_VERSION" ]
-          then
-            KUBE_VERSION=$TAG_REF
-          fi
           KUBE_PATCH_VERSION=${KUBE_VERSION#v}
           KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
 
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
           # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
           KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
@@ -108,7 +100,6 @@ jobs:
           cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
-          TAG_REF: ${{ github.ref_name }}
 
       # Packer's downloader can neither resume nor retry when the caching proxy
       # in front of the upstream mirrors truncates the image mid-transfer, so a
@@ -201,15 +192,10 @@ jobs:
       - name: Patch K8S Version
         id: patch-version
         run: |
-          if [ -z "$KUBE_VERSION" ]
-          then
-            KUBE_VERSION=$TAG_REF
-          fi
           KUBE_PATCH_VERSION=${KUBE_VERSION#v}
           KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
 
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
           # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
           KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
@@ -229,7 +215,6 @@ jobs:
           cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
-          TAG_REF: ${{ github.ref_name }}
 
       # Packer's downloader can neither resume nor retry when the caching proxy
       # in front of the upstream mirrors truncates the image mid-transfer, so a
@@ -322,15 +307,10 @@ jobs:
       - name: Patch K8S Version
         id: patch-version
         run: |
-          if [ -z "$KUBE_VERSION" ]
-          then
-            KUBE_VERSION=$TAG_REF
-          fi
           KUBE_PATCH_VERSION=${KUBE_VERSION#v}
           KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
 
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
 
           # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
           KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
@@ -350,7 +330,6 @@ jobs:
           cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
-          TAG_REF: ${{ github.ref_name }}
 
       # Packer's downloader can neither resume nor retry when the caching proxy
       # in front of the upstream mirrors truncates the image mid-transfer, so a
@@ -443,15 +422,10 @@ jobs:
       - name: Patch K8S Version
         id: patch-version
         run: |
-          if [ -z "$KUBE_VERSION" ] 
-          then
-            KUBE_VERSION=$TAG_REF
-          fi
           KUBE_PATCH_VERSION=${KUBE_VERSION#v}
           KUBE_MINOR_VERSION=${KUBE_PATCH_VERSION%.*}
           
           echo "kube-version=$KUBE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "kube-minor-version=$KUBE_MINOR_VERSION" >> "$GITHUB_OUTPUT"
           
           # Resolve the exact deb package revision (e.g. -1.1, -2.1) from the pkgs.k8s.io index
           KUBE_DEB_VERSION=$(curl -sfL "https://pkgs.k8s.io/core:/stable:/v${KUBE_MINOR_VERSION}/deb/Packages" \
@@ -471,7 +445,6 @@ jobs:
           cat packer/config/kubernetes.json
         env:
           KUBE_VERSION: ${{ inputs.kube_version }}
-          TAG_REF: ${{ github.ref_name }}
 
       # Packer's downloader can neither resume nor retry when the caching proxy
       # in front of the upstream mirrors truncates the image mid-transfer, so a

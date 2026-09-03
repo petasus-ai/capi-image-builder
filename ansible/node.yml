@@ -42,12 +42,6 @@
         name: load_additional_components
       when: load_additional_components | bool
     - include_role:
-        name: "{{ role }}"
-      loop: "{{ custom_role_names.split() }}"
-      loop_control:
-        loop_var: role
-      when: custom_role | default(false)|bool
-    - include_role:
         name: cni
     - include_role:
         name: addons

@@ -12,7 +12,6 @@
       "firmware": "{{user `firmware`}}",
       "format": "{{user `format`}}",
       "headless": "{{user `headless`}}",
-      "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
       "iso_checksum": "{{user `iso_checksum_type`}}:{{user `iso_checksum`}}",
       "iso_url": "{{user `iso_url`}}",
       "memory": "{{user `memory`}}",
@@ -52,46 +51,9 @@
 	]
        ],
       "vm_name": "{{user `build_name`}}-kube-{{user `kubernetes_semver`}}"
-    },
-    {
-      "accelerator": "{{user `accelerator`}}",
-      "boot_command": [
-        "{{user `boot_command_prefix`}}",
-        "http://{{ .HTTPIP }}:{{ .HTTPPort }}",
-        "{{user `boot_command_suffix`}}"
-      ],
-      "boot_wait": "{{user `boot_wait`}}",
-      "cpus": "{{user `cpus`}}",
-      "disk_compression": "{{ user `disk_compression`}}",
-      "disk_discard": "{{user `disk_discard`}}",
-      "disk_interface": "virtio-scsi",
-      "disk_size": "{{user `disk_size`}}",
-      "firmware": "{{user `firmware`}}",
-      "format": "{{user `format`}}",
-      "headless": "{{user `headless`}}",
-      "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-      "iso_checksum": "{{user `iso_checksum_type`}}:{{user `iso_checksum`}}",
-      "iso_url": "{{user `iso_url`}}",
-      "memory": "{{user `memory`}}",
-      "name": "flatcar",
-      "net_device": "virtio-net",
-      "output_directory": "{{user `output_directory`}}",
-      "qemu_binary": "{{user `qemu_binary`}}",
-      "shutdown_command": "echo '{{user `ssh_password`}}' | sudo -S -E sh -c 'usermod -L {{user `ssh_username`}} && {{user `shutdown_command`}}'",
-      "ssh_password": "{{user `ssh_password`}}",
-      "ssh_timeout": "2h",
-      "ssh_username": "{{user `ssh_username`}}",
-      "type": "qemu",
-      "vm_name": "{{user `build_name`}}-kube-{{user `kubernetes_semver`}}"
     }
   ],
   "post-processors": [
-    {
-      "only": [
-        "flatcar"
-      ],
-      "type": "vagrant"
-    },
     {
       "environment_vars": [
         "CUSTOM_POST_PROCESSOR={{user `custom_post_processor`}}"
@@ -106,17 +68,6 @@
   ],
   "provisioners": [
     {
-      "environment_vars": [
-        "BUILD_NAME={{user `build_name`}}"
-      ],
-      "execute_command": "BUILD_NAME={{user `build_name`}}; if [[ \"${BUILD_NAME}\" == *\"flatcar\"* ]]; then sudo {{.Vars}} -S -E bash '{{.Path}}'; fi",
-      "only": [
-        "flatcar"
-      ],
-      "script": "./packer/files/bootstrap-flatcar.sh",
-      "type": "shell"
-    },
-    {
       "type":"shell",
       "execute_command":"echo 'install python' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
       "scripts": [
@@ -125,7 +76,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S bash '{{ .Path }}'",
       "scripts": [
         "scripts/upgrade-kernel.sh"
@@ -133,7 +83,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "expect_disconnect": true,
       "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
       "inline": [
@@ -142,7 +91,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "pause_before": "60s",
       "max_retries": "20",
       "inline": [
@@ -167,7 +115,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S bash '{{ .Path }}'",
       "scripts": [
         "scripts/reclaim-free-space.sh"
@@ -191,16 +138,9 @@
         "OS": "{{user `distro_name` | lower}}",
         "PROVIDER": "qemu",
         "accel_provider": "{{user `accel_provider`}}",
-        "containerd_version": "{{user `containerd_version`}}",
-        "kubernetes_cni_deb_version": "{{ user `kubernetes_cni_deb_version` }}",
-        "kubernetes_cni_rpm_version": "{{ split (user `kubernetes_cni_rpm_version`) \"-\" 0 }}",
-        "kubernetes_cni_source_type": "{{user `kubernetes_cni_source_type`}}",
         "kubernetes_cni_version": "{{user `kubernetes_cni_semver` | replace \"v\" \"\" 1}}",
         "kubernetes_deb_version": "{{ user `kubernetes_deb_version` }}",
         "kubernetes_rpm_version": "{{ split (user `kubernetes_rpm_version`) \"-\" 0  }}",
-        "kubernetes_source_type": "{{user `kubernetes_source_type`}}",
-        "kubernetes_version": "{{user `kubernetes_semver` | replace \"v\" \"\" 1}}",
-        "pause_image": "{{user `pause_image`}}",
         "sysusrlocal_prefix": "{{user `sysusrlocal_prefix`}}"
       },
       "version": "{{user `goss_version`}}"
@@ -211,7 +151,6 @@
     "ansible_common_vars": "",
     "ansible_extra_vars": "ansible_python_interpreter=/usr/bin/python3",
     "boot_wait": "10s",
-    "build_timestamp": "{{timestamp}}",
     "containerd_runc_checksum_url": "https://github.com/opencontainers/runc/releases/download/v{{user `runc_version`}}/runc.sha256sum",
     "containerd_runc_url": "https://github.com/opencontainers/runc/releases/download/v{{user `runc_version`}}/runc.{{user `distro_arch`}}",
     "containerd_service_url": "https://raw.githubusercontent.com/containerd/containerd/refs/tags/v{{user `containerd_version`}}/containerd.service",
@@ -229,23 +168,17 @@
     "format": "qcow2",
     "headless": "true",
     "kubernetes_cni_deb_version": null,
-    "kubernetes_cni_http_source": null,
     "kubernetes_cni_semver": null,
-    "kubernetes_cni_source_type": null,
     "kubernetes_container_registry": null,
     "kubernetes_deb_gpg_key": null,
     "kubernetes_deb_repo": null,
     "kubernetes_deb_version": null,
-    "kubernetes_http_source": null,
-    "kubernetes_load_additional_imgs": null,
     "kubernetes_rpm_gpg_check": null,
     "kubernetes_rpm_gpg_key": null,
     "kubernetes_rpm_repo": null,
     "kubernetes_rpm_version": null,
     "kubernetes_semver": null,
     "kubernetes_series": null,
-    "kubernetes_source_type": null,
-    "machine_id_mode": "444",
     "memory": "2048",
     "output_directory": "./output/{{user `build_name`}}-kube-{{user `kubernetes_semver`}}",
     "python_path": "",

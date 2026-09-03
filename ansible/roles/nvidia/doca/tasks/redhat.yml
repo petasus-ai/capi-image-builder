@@ -1,6 +1,5 @@
 - name: Ensure CRB repository is enabled
   command: dnf config-manager --set-enabled crb
-  when: ansible_distribution_major_version | int >= 9
 
 # dkms is provided only by EPEL, so enable EPEL before installing the DKMS build
 # prerequisites.

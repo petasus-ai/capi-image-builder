@@ -5,10 +5,7 @@
       when: ansible_os_family == "RedHat"
 
     - include_tasks: deb_security.yml
-      when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
-
-    - include_tasks: deb_ssl_upgrade.yml
-      when: ansible_distribution == "Ubuntu" and ansible_distribution_version == "20.04"
+      when: ansible_os_family == "Debian"
 
     - name: Change the shadow file permission
       file:

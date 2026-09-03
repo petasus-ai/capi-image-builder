@@ -1,4 +1,3 @@
-{{ if ne .Vars.OS "windows"}}
 kubernetes_version: &kubernetes_version
   versions:
     or:
@@ -21,7 +20,6 @@ package:
     installed: true
   ntp:
     installed: false
-{{if eq .Vars.kubernetes_source_type "pkg"}}
   kubeadm:
     installed: true
     <<: *kubernetes_version
@@ -31,12 +29,9 @@ package:
   kubectl:
     installed: true
     <<: *kubernetes_version
-{{end}}
-{{if eq .Vars.kubernetes_cni_source_type "pkg"}}
   kubernetes-cni:
     installed: true
     <<: *kubernetes_cni_version
-{{end}}
 # Looping over common packages for an OS
 {{range $name, $vers := index .Vars .Vars.OS "common-package"}}
   {{$name}}:
@@ -52,19 +47,4 @@ package:
   {{range $key, $val := $vers}}
     {{$key}}: {{$val}}
   {{end}}
-{{end}}
-
-{{end}}
-{{ if eq .Vars.OS "windows"}} # Windows
-# Workaround until windows features are added to goss
-command:
-{{range $name, $vers := index .Vars .Vars.OS "common-windows-features"}}
-  "Windows Feature - {{ $name }}":
-    exec: powershell -command "(Get-WindowsFeature {{ $name }} | select *)"
-    exit-status: 0
-    stdout: {{range $vers.expected}}
-    - {{.}}
-    timeout: 60000
-    {{end}}
-{{end}}
 {{end}}

@@ -62,8 +62,8 @@ golden_component_map:
 # containerd, runc and crictl from upstream tarballs, so they own no package
 # entry. Each probe runs `path args` and takes the first semver-looking token
 # out of the combined stdout/stderr. CNI plugins are probed rather than mapped
-# because they arrive either way (kubernetes_cni_source_type = http or pkg) and
-# land in /opt/cni/bin regardless. A missing binary is skipped silently.
+# because the package that carries them varies by distro while they always land
+# in /opt/cni/bin. A missing binary is skipped silently.
 golden_component_binaries:
   - name: containerd
     path: /usr/local/bin/containerd

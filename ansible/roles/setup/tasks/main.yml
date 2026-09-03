@@ -15,11 +15,5 @@
 - import_tasks: debian.yml
   when: ansible_os_family == "Debian"
 
-- import_tasks: flatcar.yml
-  when: ansible_os_family == "Flatcar"
-
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
-
-- import_tasks: photon.yml
-  when: ansible_os_family == "VMware Photon OS"

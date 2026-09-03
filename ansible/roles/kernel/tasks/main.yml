@@ -17,8 +17,8 @@
 # asserts the same invariant, but only at the very end — this one fails the build
 # before a single module is built against a kernel the image will not boot.
 #
-# Immutable/atomic families (Flatcar, Photon) fall through both imports and end
-# up with an empty result, which is treated as nothing to check.
+# A family matching neither import falls through both and ends up with an empty
+# result, which is treated as nothing to check.
 
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"

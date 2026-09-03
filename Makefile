@@ -20,8 +20,6 @@ SHELL := /usr/bin/env bash
 
 .DEFAULT_GOAL := help
 
-# This option is for running docker manifest command
-export DOCKER_CLI_EXPERIMENTAL := enabled
 # hack/ensure-packer.sh installs the pinned Packer here, so it has to outrank
 # whatever version the build runner ships. Harmless when the directory does not
 # exist, which is the case on a host that already has the pinned version.
@@ -32,49 +30,23 @@ export PATH := $(abspath .local/bin):$(PATH)
 # and the build have to be told the same path rather than each guessing.
 export PACKER_PLUGIN_PATH ?= $(HOME)/.packer.d/plugins
 
-export IB_VERSION ?= $(shell git describe --dirty)
-
 ## --------------------------------------
 ## Help
 ## --------------------------------------
 ##@ Helpers
 help: ## Display this help
-	@echo NOTE
-	@echo '  The "build-node-ova" targets have analogue "clean-node-ova" targets for'
-	@echo '  cleaning artifacts created from building OVAs using a local'
-	@echo '  hypervisor.'
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-35s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-.PHONY: version
-version: ## Display version of image-builder
-	@echo $(IB_VERSION)
 
 ## --------------------------------------
 ## Dependencies
 ## --------------------------------------
 ##@ Dependencies
 
-.PHONY: deps
-## Installs/checks all dependencies
-deps: deps-qemu
-
-## Installs/checks dependencies for QEMU builds
 .PHONY: deps-qemu
-deps-qemu:
+deps-qemu: ## Installs Ansible, Packer and the Packer plugins the build needs
 	hack/ensure-ansible.sh
 	hack/ensure-packer.sh
 	hack/ensure-packer-plugins.sh
-
-## --------------------------------------
-## Container variables
-## --------------------------------------
-REGISTRY ?= gcr.io/$(shell gcloud config get-value project)
-STAGING_REGISTRY := gcr.io/k8s-staging-scl-image-builder
-IMAGE_NAME ?= cluster-node-image-builder
-CONTROLLER_IMG ?= $(REGISTRY)/$(IMAGE_NAME)
-TAG ?= dev
-ARCH ?= amd64
-BASE_IMAGE ?= docker.io/library/ubuntu:focal
 
 ## --------------------------------------
 ## Packer flags
@@ -83,42 +55,8 @@ BASE_IMAGE ?= docker.io/library/ubuntu:focal
 # Set Packer color to true if not already set in env variables
 # Only valid for builds
 ifneq (,$(findstring build-, $(MAKECMDGOALS)))
-	# A build target
-	PACKER_COLOR ?= true
-	PACKER_FLAGS += -color=$(PACKER_COLOR)
-endif
-
-# If FOREGROUND=1 then Packer will set headless to false, causing local builds
-# to build in the foreground, with a UI. This is very useful when debugging new
-# platforms or issues with existing ones.
-ifeq (1,$(strip $(FOREGROUND)))
-PACKER_FLAGS += -var="headless=false"
-endif
-
-# If ON_ERROR_ASK=1 then Packer will set -on-error to ask, causing the Packer
-# build to pause when any error happens, instead of simply exiting. This is
-# useful when debugging unknown issues logging into the remote machine via ssh.
-ifeq (1,$(strip $(ON_ERROR_ASK)))
-PACKER_FLAGS += -on-error=ask
-endif
-
-# ssh_private_key_file and ssh_public_key are needed to pass ssh keypair
-# from its host to the packer guest machine, so boot managers like ignition
-# could make use of the key in its config.
-# SSH_PRIVATE_KEY_FILE is name of the file that contains the private key.
-# SSH_PUBLIC_KEY_FILE is name of the file that contains the public key.
-ifneq (,$(strip $(SSH_PRIVATE_KEY_FILE)))
-PACKER_FLAGS += -var ssh_private_key_file="$(SSH_PRIVATE_KEY_FILE)"
-endif
-
-ifneq (,$(strip $(SSH_PUBLIC_KEY_FILE)))
-PACKER_FLAGS += -var ssh_public_key="$(shell cat ${SSH_PUBLIC_KEY_FILE})"
-endif
-
-# If DEBUG=1 then Packer will set -debug, enabling debug mode for builds, providing
-# more verbose logging
-ifeq (1,$(strip $(DEBUG)))
-PACKER_FLAGS += -debug
+PACKER_COLOR ?= true
+PACKER_FLAGS += -color=$(PACKER_COLOR)
 endif
 
 # We want the var files passed to Packer to have a specific order, because the
@@ -131,7 +69,7 @@ endif
 # A list of variable files given to Packer to configure things like the versions
 # of Kubernetes, CNI, and ContainerD to install. Any additional files from the
 # environment are appended.
-COMMON_NODE_VAR_FILES :=	packer/config/kubernetes.json \
+COMMON_VAR_FILES :=	packer/config/kubernetes.json \
 					packer/config/cni.json \
 					packer/config/containerd.json \
 					packer/config/ansible-args.json \
@@ -144,16 +82,13 @@ COMMON_NODE_VAR_FILES :=	packer/config/kubernetes.json \
 # files from COMMON_VAR_FILES, with each file prefixed by -var-file=.
 #
 # Any existing values from PACKER_FLAGS take precendence over variable files.
-PACKER_NODE_FLAGS := $(foreach f,$(abspath $(COMMON_NODE_VAR_FILES)),-var-file="$(f)" ) \
+PACKER_BUILD_FLAGS := $(foreach f,$(abspath $(COMMON_VAR_FILES)),-var-file="$(f)" ) \
 				$(PACKER_FLAGS)
 ABSOLUTE_PACKER_VAR_FILES := $(foreach f,$(abspath $(PACKER_VAR_FILES)),-var-file="$(f)" )
 
 ## --------------------------------------
 ## Platform and version combinations
 ## --------------------------------------
-ROCKYLINUX_VERSIONS		:=	rockylinux-10-uefi
-UBUNTU_VERSIONS			:=	ubuntu-2404
-
 QEMU_AMD64_BUILD_NAMES			?=	qemu-ubuntu-2404 qemu-rockylinux-10-uefi
 QEMU_ARM64_BUILD_NAMES			?=	qemu-ubuntu-2404-aarch64 qemu-rockylinux-10-uefi-aarch64
 
@@ -176,19 +111,19 @@ PACKER_GOMAXPROCS ?= 16
 
 .PHONY: $(QEMU_AMD64_BUILD_TARGETS)
 $(QEMU_AMD64_BUILD_TARGETS): deps-qemu
-	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_BUILD_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_ARM64_BUILD_TARGETS)
 $(QEMU_ARM64_BUILD_TARGETS): deps-qemu
-	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_BUILD_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_AMD64_VALIDATE_TARGETS)
 $(QEMU_AMD64_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer validate $(PACKER_BUILD_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_ARM64_VALIDATE_TARGETS)
 $(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer validate $(PACKER_BUILD_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 
 ## --------------------------------------
@@ -243,46 +178,3 @@ clean-qemu: $(QEMU_CLEAN_TARGETS)
 clean-packer-cache: ## Removes the packer cache
 clean-packer-cache:
 	rm -fr packer_cache/*
-
-## --------------------------------------
-## Docker targets
-## --------------------------------------
-##@ Docker
-
-.PHONY: docker-pull-prerequisites
-docker-pull-prerequisites:
-	# We must pre-pull images https://github.com/moby/buildkit/issues/1271
-	docker pull docker/dockerfile:1.1-experimental
-	docker pull $(BASE_IMAGE)
-
-.PHONY: docker-build
-docker-build: docker-pull-prerequisites ## Build the docker image for controller-manager
-	DOCKER_BUILDKIT=1 docker build --build-arg PASSED_IB_VERSION=$(IB_VERSION) --build-arg ARCH=$(ARCH) --build-arg BASE_IMAGE=$(BASE_IMAGE) . -t $(CONTROLLER_IMG)-$(ARCH):$(TAG)
-
-.PHONY: docker-push
-docker-push: ## Push the docker image
-	docker push $(CONTROLLER_IMG)-$(ARCH):$(TAG)
-
-## --------------------------------------
-## Test targets
-## --------------------------------------
-##@ Testing
-
-## --------------------------------------
-## Release targets
-## --------------------------------------
-##@ Release
-
-.PHONY: release-staging
-release-staging: ## Builds and push container images to the staging bucket.
-	TAG=$(IB_VERSION) REGISTRY=$(STAGING_REGISTRY) $(MAKE) docker-build docker-push
-
-## --------------------------------------
-## Sort JSON
-## --------------------------------------
-##@ Sort JSON
-
-.PHONY: json-sort
-json_files = $(shell find . -type f -name "*.json" | sort -u)
-json-sort: ## Sort all JSON files alphabetically
-	@for f in $(json_files); do (cat "$$f" | jq -S '.' >> "$$f".sorted && mv "$$f".sorted "$$f") || exit 1 ; done

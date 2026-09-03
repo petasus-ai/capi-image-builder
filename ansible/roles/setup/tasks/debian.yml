@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ---
-- name: Put templated sources.list in place
-  template:
-    src: etc/apt/sources.list.j2
-    dest: /etc/apt/sources.list
-    mode: 0644
-  when: ansible_architecture == "x86_64"
-
 - name: Put templated apt.conf.d/90proxy in place when defined
   template:
     src: etc/apt/apt.conf.d/90proxy
@@ -26,13 +19,17 @@
     mode: 0644
   when: http_proxy is defined or https_proxy is defined
 
+# Ubuntu 24.04 ships its repositories as deb822 (sources.list.d/ubuntu.sources)
+# and only a comment stub in sources.list, so both formats have to be caught.
 - name: Find existing repo files
   find:
     depth: 1
     paths:
       - /etc/apt
       - /etc/apt/sources.list.d
-    patterns: '*.list'
+    patterns:
+      - '*.list'
+      - '*.sources'
   register: repo_files
   when: disable_public_repos|bool
 

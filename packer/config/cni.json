@@ -1,8 +1,5 @@
 {
   "kubernetes_cni_deb_version": null,
-  "kubernetes_cni_http_checksum": "sha256:https://github.com/containernetworking/plugins/releases/download/{{ user `kubernetes_cni_semver` }}/cni-plugins-linux-{{user `distro_arch`}}-{{ user `kubernetes_cni_semver` }}.tgz.sha256",
-  "kubernetes_cni_http_source": "https://github.com/containernetworking/plugins/releases/download",
   "kubernetes_cni_rpm_version": null,
-  "kubernetes_cni_semver": "v1.9.1",
-  "kubernetes_cni_source_type": "pkg"
+  "kubernetes_cni_semver": "v1.9.1"
 }

@@ -1,6 +1,6 @@
 ---
 - include_tasks: deb_main.yml
-  when: ansible_os_family == "Debian" or ansible_os_family == "Ubuntu"
+  when: ansible_os_family == "Debian"
 
 - name: copy update-cert.sh script
   copy:
