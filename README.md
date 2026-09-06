@@ -176,6 +176,10 @@ out of it is then pinned for the life of the image — see [Upgrade Freeze](#upg
 variant workflows patch it before building. `nvidia` pulls in `nvidia/doca`,
 `nvidia/cuda`, `ddn` and `vast`; `rebellions` pulls in the Rebellions driver role.
 
+The DOCA release the `nvidia/doca` role installs is `doca_version` in the same
+file (default `3.5.0`); override it with `-var doca_version=…` or a
+`PACKER_VAR_FILES` entry.
+
 **DOCA-OFED is built through DKMS**, not by compiling the `mlnx-ofa_kernel` RPM
 with `doca-kernel-support`. On kernels newer than NVIDIA's qualified list that
 compile fails in `mlx5_dpll` — an unused SyncE clock-sync module broken by

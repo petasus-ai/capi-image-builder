@@ -1,6 +1,9 @@
 doca_repo_id: "doca"
 doca_repo_name: "DOCA Online Repo"
 doca_base_prefix: "https://linux.mellanox.com/public/repo/doca"
+# Fallback only: the build passes doca_version from packer/config/common.json
+# through ansible-args.json.
+doca_version: "3.5.0"
 doca_ofed_package: "doca-ofed"
 
 _doca_keyring_file: "doca_keyring.gpg"
