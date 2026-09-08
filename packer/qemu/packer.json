@@ -52,46 +52,9 @@
 	]
        ],
       "vm_name": "{{user `build_name`}}-kube-{{user `kubernetes_semver`}}"
-    },
-    {
-      "accelerator": "{{user `accelerator`}}",
-      "boot_command": [
-        "{{user `boot_command_prefix`}}",
-        "http://{{ .HTTPIP }}:{{ .HTTPPort }}",
-        "{{user `boot_command_suffix`}}"
-      ],
-      "boot_wait": "{{user `boot_wait`}}",
-      "cpus": "{{user `cpus`}}",
-      "disk_compression": "{{ user `disk_compression`}}",
-      "disk_discard": "{{user `disk_discard`}}",
-      "disk_interface": "virtio-scsi",
-      "disk_size": "{{user `disk_size`}}",
-      "firmware": "{{user `firmware`}}",
-      "format": "{{user `format`}}",
-      "headless": "{{user `headless`}}",
-      "http_directory": "./packer/qemu/linux/{{user `distro_name`}}/http/",
-      "iso_checksum": "{{user `iso_checksum_type`}}:{{user `iso_checksum`}}",
-      "iso_url": "{{user `iso_url`}}",
-      "memory": "{{user `memory`}}",
-      "name": "flatcar",
-      "net_device": "virtio-net",
-      "output_directory": "{{user `output_directory`}}",
-      "qemu_binary": "{{user `qemu_binary`}}",
-      "shutdown_command": "echo '{{user `ssh_password`}}' | sudo -S -E sh -c 'usermod -L {{user `ssh_username`}} && {{user `shutdown_command`}}'",
-      "ssh_password": "{{user `ssh_password`}}",
-      "ssh_timeout": "2h",
-      "ssh_username": "{{user `ssh_username`}}",
-      "type": "qemu",
-      "vm_name": "{{user `build_name`}}-kube-{{user `kubernetes_semver`}}"
     }
   ],
   "post-processors": [
-    {
-      "only": [
-        "flatcar"
-      ],
-      "type": "vagrant"
-    },
     {
       "environment_vars": [
         "CUSTOM_POST_PROCESSOR={{user `custom_post_processor`}}"
@@ -106,17 +69,6 @@
   ],
   "provisioners": [
     {
-      "environment_vars": [
-        "BUILD_NAME={{user `build_name`}}"
-      ],
-      "execute_command": "BUILD_NAME={{user `build_name`}}; if [[ \"${BUILD_NAME}\" == *\"flatcar\"* ]]; then sudo {{.Vars}} -S -E bash '{{.Path}}'; fi",
-      "only": [
-        "flatcar"
-      ],
-      "script": "./packer/files/bootstrap-flatcar.sh",
-      "type": "shell"
-    },
-    {
       "type":"shell",
       "execute_command":"echo 'install python' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
       "scripts": [
@@ -125,7 +77,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S bash '{{ .Path }}'",
       "scripts": [
         "scripts/upgrade-kernel.sh"
@@ -133,7 +84,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "expect_disconnect": true,
       "execute_command": "echo '{{user `ssh_password`}}' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
       "inline": [
@@ -142,7 +92,6 @@
     },
     {
       "type": "shell",
-      "except": ["flatcar"],
       "pause_before": "60s",
       "max_retries": "20",
       "inline": [

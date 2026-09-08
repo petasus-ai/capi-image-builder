@@ -13,8 +13,8 @@
 # limitations under the License.
 ---
 # Runs before the family preps so their autoremove sweeps up anything the
-# kernel removal orphans. Restricted to the package-managed families: Flatcar
-# and Photon have neither dpkg nor rpm kernel packages to prune.
+# kernel removal orphans. Restricted to the package-managed families: Photon
+# has neither dpkg nor rpm kernel packages to prune.
 - import_tasks: kernel_cleanup.yml
   when:
     - sysprep_remove_old_kernels | bool

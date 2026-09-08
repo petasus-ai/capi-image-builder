@@ -145,9 +145,6 @@ centos:
       cloud-init:
       cloud-utils-growpart:
       python2-pip:
-flatcar:
-  amazon:
-    command:
 photon:
   common-service:
     apparmor:

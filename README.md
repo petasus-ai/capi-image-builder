@@ -452,5 +452,3 @@ hack/               dependency bootstrapping
 .github/            build workflows and the supply-chain composite action
 ```
 
-`README-flatcar.md` documents the inherited Flatcar path, which this fork does not
-build.

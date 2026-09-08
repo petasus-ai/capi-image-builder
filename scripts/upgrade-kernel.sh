@@ -84,7 +84,7 @@ elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
     newest=$(rpm -q "$query" --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -1)
 
 else
-    # Immutable/atomic families (Flatcar, Photon) have no kernel to upgrade.
+    # Immutable/atomic families (Photon) have no kernel to upgrade.
     echo "kernel: no supported package manager — nothing to upgrade"
     exit 0
 fi

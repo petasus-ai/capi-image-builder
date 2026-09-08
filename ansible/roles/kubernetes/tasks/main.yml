@@ -34,7 +34,6 @@
   loop:
   - ctr
   - crictl
-  when: ansible_os_family != "Flatcar"
 
 - import_tasks: url.yml
   when: kubernetes_source_type == "http" and kubernetes_cni_source_type == "http"
@@ -74,7 +73,7 @@
     ecr: '{{ kubernetes_container_registry is regex("^[0-9]{12}.dkr.ecr.[^.]+.amazonaws.com$") }}'
 
 - import_tasks: kubeadmpull.yml
-  when: (kubernetes_source_type == "pkg" and ecr != true) or ansible_os_family == "Flatcar"
+  when: kubernetes_source_type == "pkg" and ecr != true
 
 - import_tasks: ecrpull.yml
   when: kubernetes_source_type != "http" and ecr == true

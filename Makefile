@@ -167,19 +167,19 @@ PACKER_GOMAXPROCS ?= 16
 
 .PHONY: $(QEMU_AMD64_BUILD_TARGETS)
 $(QEMU_AMD64_BUILD_TARGETS): deps-qemu
-	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_ARM64_BUILD_TARGETS)
 $(QEMU_ARM64_BUILD_TARGETS): deps-qemu
-	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	GOMAXPROCS=$(PACKER_GOMAXPROCS) timeout $(PACKER_BUILD_TIMEOUT) packer build $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst build-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_AMD64_VALIDATE_TARGETS)
 $(QEMU_AMD64_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/amd64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 .PHONY: $(QEMU_ARM64_VALIDATE_TARGETS)
 $(QEMU_ARM64_VALIDATE_TARGETS): deps-qemu
-	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) -except=flatcar packer/qemu/packer.json
+	packer validate $(PACKER_NODE_FLAGS) -var-file="packer/config/arm64-args.json" -var-file="$(abspath packer/qemu/$(subst validate-,,$@).json)" $(ABSOLUTE_PACKER_VAR_FILES) packer/qemu/packer.json
 
 
 ## --------------------------------------

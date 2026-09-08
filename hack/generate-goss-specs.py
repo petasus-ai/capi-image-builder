@@ -24,7 +24,7 @@ import sys
 root_path = os.path.abspath(os.path.join(sys.argv[0], '..', '..'))
 
 # Define what OS's are supported on which providers
-builds = {'amazon': ['amazon linux', 'centos', 'flatcar', 'ubuntu', 'windows'],
+builds = {'amazon': ['amazon linux', 'centos', 'ubuntu', 'windows'],
           'azure':  ['centos', 'ubuntu', 'windows'],
           'ova': ['centos', 'photon', 'rhel', 'ubuntu', 'windows']}
 
@@ -76,14 +76,14 @@ def main():
         description='Generates GOSS specs. By default, generates all '
                     'possible specs to stdout.',
         usage='%(prog)s [-h] [--provider {amazon,azure,ova}] '
-              '[--os {al2,centos,flatcar,photon,rhel,ubuntu,windows}]')
+              '[--os {al2,centos,photon,rhel,ubuntu,windows}]')
     parser.add_argument('--provider',
                         choices=['amazon', 'azure', 'ova'],
                         action='append',
                         default=None,
                         help='One provider. Can be used multiple times')
     parser.add_argument('--os',
-                        choices=['al2', 'centos', 'flatcar', 'photon', 'rhel', 'ubuntu', 'windows'],
+                        choices=['al2', 'centos', 'photon', 'rhel', 'ubuntu', 'windows'],
                         action='append',
                         default=None,
                         help='One OS. Can be used multiple times')

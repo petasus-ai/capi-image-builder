@@ -86,7 +86,6 @@
     - cloud-config
     - cloud-init
     - cloud-init-local
-  when: ansible_os_family != "Flatcar"
 
 - name: Create cloud-init config file
   copy:
@@ -95,7 +94,6 @@
     owner: root
     group: root
     mode: 0644
-  when: ansible_os_family != "Flatcar"
 
 - name: set cloudinit feature flags
   copy:
@@ -112,8 +110,7 @@
     state: started
     daemon_reload: yes
     name: chronyd
-  when: (packer_builder_type.startswith('amazon') or
+  when: packer_builder_type.startswith('amazon') or
     packer_builder_type.startswith('azure') or
     packer_builder_type is search('vmware') or
-    packer_builder_type is search('vsphere')) and
-    ansible_os_family != "Flatcar"
+    packer_builder_type is search('vsphere')
