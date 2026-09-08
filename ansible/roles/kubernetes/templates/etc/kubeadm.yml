@@ -1,9 +1,18 @@
-apiVersion: kubeadm.k8s.io/v1beta3
+# v1beta4, not v1beta3: kubeadm 1.37 removed the v1beta3 API and refuses to
+# read a config written in it ("your configuration file uses an old API spec"),
+# which failed `kubeadm config images pull` mid-build for every 1.37 image.
+# v1beta4 has existed since 1.31, well below the oldest series this repository
+# still builds, so one template serves every version we target.
+#
+# criSocket stays a bare path: it is also handed to ctr and crictl, which want
+# it without a scheme, and kubeadm still prepends unix:// itself (with a
+# deprecation warning) when the scheme is missing.
+apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
 imageRepository: {{ kubernetes_container_registry }}
 kubernetesVersion: {{ kubernetes_semver }}
 ---
-apiVersion: kubeadm.k8s.io/v1beta3
+apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
 nodeRegistration:
   criSocket: {{ containerd_cri_socket }}
