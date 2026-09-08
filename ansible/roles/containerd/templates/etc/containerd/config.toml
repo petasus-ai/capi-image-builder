@@ -9,13 +9,13 @@
 {% set sandbox_pause_image = pause_image_effective | default(pause_image) %}
 
 {% if containerd_version is version('2.0.0', '>=') %}
-# Config version 4 for containerd 2.x (version 1 was removed in 2.0 and version
-# 2 is deprecated). Pinned to 4 rather than 3 because containerd refuses to
-# start when a conf.d drop-in declares a higher version than the root config,
-# and the NVIDIA container toolkit (gpu-operator) writes its drop-in as version
-# 4. containerd migrates a v3 root to v4 on load anyway, so declaring 4 here
-# only removes the migration - the plugin paths are identical.
-version = 4
+# Not a literal: tasks/main.yml asks the installed binary which version it
+# writes by default and publishes it here. containerd rejects a conf.d drop-in
+# newer than the root config, and the drop-in writers follow the binary, so the
+# root has to track it -- 2.0-2.2 say 3, 2.3 and later say 4. Undefined here
+# means the query task did not run, and failing the render is the point: a
+# blank version silently produces a config containerd cannot parse.
+version = {{ containerd_config_version }}
 {% else %}
 # Use config version 2 to enable new configuration fields.
 # Config file is parsed as version 1 by default.

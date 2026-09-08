@@ -1,12 +1,11 @@
 # TODO: This task will be deprecated once https://github.com/containerd/cri/issues/1131 is fixed
-- name: Create kubeadm config file
-  template:
-    dest: /etc/kubeadm.yml
-    src: etc/kubeadm.yml
-    mode: 0600
-
+# Flags rather than a config file, for the reason kubeadmpull.yml gives: a
+# config file pins a kubeadm API version that a later release will remove.
 - name: Get images list
-  shell: 'kubeadm config images list --config /etc/kubeadm.yml'
+  shell: >-
+    kubeadm config images list
+    --kubernetes-version {{ kubernetes_semver }}
+    --image-repository {{ kubernetes_container_registry }}
   register: images_list
 
 - name: Log into ECR
@@ -21,9 +20,3 @@
 - name: Pull images
   command: "crictl pull --creds {{ credentials.stdout | b64decode }} {{ item }}"
   loop: "{{ images_list.stdout_lines }}"
-
-- name: Delete kubeadm config
-  file:
-    path: /etc/kubeadm.yml
-    state: absent
-  when: ansible_os_family != "Flatcar"

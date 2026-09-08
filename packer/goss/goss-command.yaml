@@ -32,6 +32,23 @@ command:
     stdout: ["/pause:"]
     stderr: []
     timeout: 0
+{{if not (hasPrefix "1." .Vars.containerd_version)}}
+# The rendered root config must declare exactly the version the installed
+# containerd writes by default. containerd refuses a conf.d drop-in written at
+# a higher version than the root, and the drop-in writers (the GPU operator's
+# nvidia-container-toolkit) take the binary's native version -- so a root left
+# behind by a containerd swapped in later in the build puts GPU nodes into a
+# containerd restart loop, with nothing failing at build time to say so.
+#
+# Skipped on containerd 1.x, which prints 1 by default while the CRI fields
+# this image needs require 2. Absolute path for the same secure_path reason as
+# ctr above; POSIX sh only -- goss runs commands through sh.
+  test "$(grep '^version' /etc/containerd/config.toml)" = "$({{ .Vars.sysusrlocal_prefix }}/bin/containerd config default | grep '^version')":
+    exit-status: 0
+    stdout: []
+    stderr: []
+    timeout: 0
+{{end}}
 {{if eq .Vars.kubernetes_source_type "pkg"}}
 {{if eq .Vars.kubernetes_cni_source_type "pkg"}}
   crictl images | grep -v 'IMAGE ID' | awk -F'[ /]' '{print $2}' | sed 's/-{{ .Vars.arch }}//g' | sort:

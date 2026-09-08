@@ -1,14 +1,15 @@
-- name: Create kubeadm config file
-  template:
-    dest: /etc/kubeadm.yml
-    src: "{{ kubeadm_template }}"
-    mode: 0600
-
+# No --config file on purpose. A kubeadm config file carries a kubeadm API
+# version, and kubeadm removes those on its own schedule: v1beta3 went in 1.37
+# and took a week of nightly image builds with it. Every value the file used to
+# carry is also a flag, and flags are not versioned, so the next config API
+# retirement cannot reach this build.
+#
+# The flags are the exact contents of the config that stood here -- image
+# repository, Kubernetes version, CRI socket -- and `kubeadm config images
+# list` is already driven the same way in containerd/tasks/pause.yml.
 - name: Kubeadm pull images
-  shell: 'kubeadm config images pull --config /etc/kubeadm.yml --cri-socket {{ containerd_cri_socket }}'
-
-- name: Delete kubeadm config
-  file:
-    path: /etc/kubeadm.yml
-    state: absent
-  when: ansible_os_family != "Flatcar"
+  shell: >-
+    kubeadm config images pull
+    --kubernetes-version {{ kubernetes_semver }}
+    --image-repository {{ kubernetes_container_registry }}
+    --cri-socket {{ containerd_cri_socket }}

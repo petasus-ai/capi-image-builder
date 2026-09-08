@@ -132,6 +132,37 @@
     src: etc/containerd/certs.d/hosts.toml
     mode: 0644
 
+# containerd refuses a root config newer than the binary understands, and
+# equally refuses a conf.d drop-in newer than the root config. The producers of
+# those drop-ins ask the binary (nvidia-container-toolkit, shipped by the GPU
+# operator, writes at the binary's native version), so the root config has to
+# sit exactly at that native version -- which moved from 3 to 4 in containerd
+# 2.3 and left GPU nodes in a containerd restart loop when the template still
+# said 3.
+#
+# Asked of the binary rather than mapped from containerd_version in the
+# template: a version map is one more pin to revisit on every containerd bump,
+# and it is exactly the pin that was wrong. Only 2.x is asked -- `config
+# default` prints the highest version it supports there, while 1.x deliberately
+# prints 1 even though the CRI fields need 2.
+- name: Ask containerd which config version it writes
+  shell: >-
+    set -o pipefail &&
+    {{ sysusrlocal_prefix }}/bin/containerd config default
+    | awk -F'[ =]+' '/^version/ { found = $2 } END { print found }'
+  args:
+    executable: /bin/bash
+  register: containerd_default_config_version
+  changed_when: false
+  when: containerd_version is version('2.0.0', '>=')
+
+# Published as a fact so the later re-render in tasks/pause.yml sees the same
+# value; that include runs pause.yml alone and never revisits this file.
+- name: Publish the config version containerd should declare
+  set_fact:
+    containerd_config_version: "{{ containerd_default_config_version.stdout | trim }}"
+  when: containerd_version is version('2.0.0', '>=')
+
 - name: Copy in containerd config file {{ containerd_config_file }}
   template:
     dest: /etc/containerd/config.toml

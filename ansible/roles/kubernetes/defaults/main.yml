@@ -36,6 +36,4 @@ kubernetes_imgs: "{{ kubernetes_primary_imgs | union(kubernetes_additional_imgs)
 
 kubernetes_cni_http_checksum: "sha256:{{ kubernetes_cni_http_source }}/{{ kubernetes_cni_semver }}/cni-plugins-linux-{{ kubernetes_goarch }}-{{ kubernetes_cni_semver }}.tgz.sha256"
 
-kubeadm_template: "etc/kubeadm.yml"
-
 kubelet_extra_args: ""
