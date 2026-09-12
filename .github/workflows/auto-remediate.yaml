@@ -34,7 +34,7 @@ on:
       max_dispatch:
         description: 'Maximum build dispatches this run'
         required: true
-        default: '4'
+        default: '20'
       ignore_cooldown:
         description: 'Dispatch even combos still inside their cooldown window'
         required: true
@@ -80,7 +80,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run || vars.AUTO_REMEDIATE_DRY_RUN || 'true' }}
-          MAX_DISPATCH: ${{ github.event.inputs.max_dispatch || '4' }}
+          MAX_DISPATCH: ${{ github.event.inputs.max_dispatch || vars.AUTO_REMEDIATE_DRY_RUN_NUM || '20' }}
           # No vars.* fallback on purpose: the override is a one-run manual
           # escape hatch, so a scheduled run can never inherit it.
           IGNORE_COOLDOWN: ${{ github.event.inputs.ignore_cooldown || 'false' }}
