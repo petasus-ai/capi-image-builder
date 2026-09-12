@@ -1,0 +1,195 @@
+{
+  "rocky|-doca|v1.36.3": {
+    "last_dispatch": 1787480721,
+    "grade": "B",
+    "tags": [
+      "v1.36.3-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-16524",
+      "CVE-2026-16526",
+      "CVE-2026-16527",
+      "CVE-2026-16529"
+    ]
+  },
+  "rocky|plain|v1.36.3": {
+    "last_dispatch": 1787006387,
+    "grade": "B",
+    "tags": [
+      "v1.36.3-aarch64",
+      "v1.36.3-amd64"
+    ],
+    "cves": [
+      "CVE-2026-11940",
+      "CVE-2026-15816"
+    ]
+  },
+  "rocky|plain|v1.35.7": {
+    "last_dispatch": 1787311968,
+    "grade": "B",
+    "tags": [
+      "v1.35.7-aarch64",
+      "v1.35.7-amd64"
+    ],
+    "cves": [
+      "CVE-2026-16524",
+      "CVE-2026-16526",
+      "CVE-2026-16527",
+      "CVE-2026-16529"
+    ]
+  },
+  "rocky|plain|v1.34.10": {
+    "last_dispatch": 1787311968,
+    "grade": "B",
+    "tags": [
+      "v1.34.10-aarch64",
+      "v1.34.10-amd64"
+    ],
+    "cves": [
+      "CVE-2026-16524",
+      "CVE-2026-16526",
+      "CVE-2026-16527",
+      "CVE-2026-16529"
+    ]
+  },
+  "rocky|-doca|v1.35.7": {
+    "last_dispatch": 1787480721,
+    "grade": "B",
+    "tags": [
+      "v1.35.7-doca-aarch64",
+      "v1.35.7-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-16524",
+      "CVE-2026-16526",
+      "CVE-2026-16527",
+      "CVE-2026-16529"
+    ]
+  },
+  "rocky|-doca|v1.34.10": {
+    "last_dispatch": 1787480721,
+    "grade": "B",
+    "tags": [
+      "v1.34.10-doca-aarch64",
+      "v1.34.10-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-16524",
+      "CVE-2026-16526",
+      "CVE-2026-16527",
+      "CVE-2026-16529"
+    ]
+  },
+  "rocky|plain|v1.36.4": {
+    "last_dispatch": 1789199118,
+    "grade": "B",
+    "tags": [
+      "v1.36.4-aarch64",
+      "v1.36.4-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|plain|v1.35.8": {
+    "last_dispatch": 1789199118,
+    "grade": "B",
+    "tags": [
+      "v1.35.8-aarch64",
+      "v1.35.8-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|plain|v1.34.11": {
+    "last_dispatch": 1789199118,
+    "grade": "B",
+    "tags": [
+      "v1.34.11-aarch64",
+      "v1.34.11-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|-doca|v1.36.4": {
+    "last_dispatch": 1789203777,
+    "grade": "B",
+    "tags": [
+      "v1.36.4-doca-aarch64",
+      "v1.36.4-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|-doca|v1.35.8": {
+    "last_dispatch": 1789203777,
+    "grade": "B",
+    "tags": [
+      "v1.35.8-doca-aarch64",
+      "v1.35.8-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|-doca|v1.34.11": {
+    "last_dispatch": 1789203777,
+    "grade": "B",
+    "tags": [
+      "v1.34.11-doca-aarch64",
+      "v1.34.11-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|plain|v1.37.0": {
+    "last_dispatch": 1789199118,
+    "grade": "B",
+    "tags": [
+      "v1.37.0-aarch64",
+      "v1.37.0-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  },
+  "rocky|-doca|v1.37.0": {
+    "last_dispatch": 1789203777,
+    "grade": "B",
+    "tags": [
+      "v1.37.0-doca-aarch64",
+      "v1.37.0-doca-amd64"
+    ],
+    "cves": [
+      "CVE-2026-73072",
+      "CVE-2026-73076",
+      "CVE-2026-73077",
+      "CVE-2026-73078"
+    ]
+  }
+}
