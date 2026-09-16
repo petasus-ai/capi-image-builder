@@ -7,3 +7,27 @@
       with_items:
         - /usr/bin/newgrp
         - /usr/bin/pkexec
+
+    # The GPU operator's driver container compiles nvidia.ko and inserts it
+    # from inside a privileged pod, and under SELinux enforcing that insert
+    # fails with EPERM:
+    #
+    #   modprobe: ERROR: could not insert 'nvidia': Permission denied
+    #
+    # Nothing points at SELinux while debugging it - the rules involved are
+    # dontaudit, so the audit log holds no AVC denial, and lockdown,
+    # module.sig_enforce, FIPS and kernel.modules_disabled all read normal
+    # while an unrelated unsigned module still loads. Confirmed by flipping a
+    # Rocky 9.8 KaaS node to permissive, after which the same driver pod
+    # compiled and loaded the module and every GPU operand validated.
+    #
+    # Drop to permissive so a GPU node pool works on this image. The Ubuntu
+    # images ship no SELinux policy at all, so this is parity rather than a
+    # new exposure, and it has to be baked in here: KaaS nodes are
+    # CAPI-managed VMs, so a runtime setenforce is lost on the next node
+    # replacement, remediation or reboot.
+    - name: Set SELinux to permissive so the GPU driver module can be inserted
+      lineinfile:
+        path: /etc/selinux/config
+        regexp: '^SELINUX='
+        line: 'SELINUX=permissive'
