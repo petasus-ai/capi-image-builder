@@ -334,8 +334,8 @@ before and after and the build fails if it changed.
 SBOM this document is mutable — the same image gains CVEs as advisories are
 published — so it is overwritten whenever it is re-scanned with a newer grype DB.
 
-Three classifications are added on top of grype's output, all there to stop the
-report demanding fixes that cannot be performed:
+Three classifications and one filter are added on top of grype's output, all
+there to stop the report demanding fixes that cannot be performed:
 
 * **`fix.availableInDistro` / `fix.distroLatest`** (`scripts/distro-fix-check.sh`).
   grype has no Rocky feed and matches EL clones against RHEL's. That is right
@@ -348,6 +348,18 @@ report demanding fixes that cannot be performed:
   `jaraco.context` and `wheel` under
   `/usr/lib/python3/dist-packages/setuptools/_vendor/` were reported as actionable
   High findings although apt has no such packages to upgrade.
+* **OS-owned language packages are dropped.** An RPM such as `python3-urllib3`
+  installs pip metadata that syft catalogs as a second, pypi-typed `urllib3`
+  package, linked to the RPM by the ownership relationship the SBOM keeps. grype
+  collapses that duplicate only for distros on its hard-coded "comprehensive
+  feed" list (redhat, ubuntu, debian, ...); an SPDX scan reconstructs Rocky as
+  `rockylinux`, which is not on it, so on EL images the pypi copy was matched
+  against GitHub's pip advisories and cited a fix (`urllib3 2.8.0`) no dnf repo
+  will ever ship — an actionable High that no rebuild could clear. The
+  projection applies grype's own rule from the SBOM's relationships (owner is
+  rpm/deb/apk, child is not, versions agree with the epoch stripped) and, as for
+  `vendored`, only when every SBOM entry for that name+version is owned. The
+  distro feed stays the authority for the owning package, as on RHEL and Ubuntu.
 * **`artifact.frozen`** — a package covered by the upgrade freeze. On a frozen
   image these are fixed by rebuilding the image, not by patching the node, and
   the report says so rather than pointing at an upgrade the pins will refuse. A

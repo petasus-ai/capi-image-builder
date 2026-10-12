@@ -79,6 +79,24 @@ MAX_VULN_BYTES=$((50 * 1024 * 1024))
 # (edgestack-image-sbom bin/refresh-vulns.sh) already judges it this way and
 # quietly repaired the flag a day later; keep the two expressions identical.
 #
+# Matches on a language package that an OS package owns are DROPPED — the pip
+# metadata under site-packages that python3-urllib3.rpm installed, say. syft
+# catalogs that dist-info as a second, pypi-typed package and records the
+# ownership-by-file-overlap relationship between the two; grype honours it only
+# when the owner's distro is on its hard-coded "comprehensive feed" list
+# (redhat, ubuntu, debian, ...), and an SPDX scan reconstructs Rocky/Alma as
+# rockylinux/almalinux, which are not on it. So on EL clones alone the pypi
+# copy is matched against GitHub's pip advisories and cites "fixed in 2.8.0"
+# for a package only dnf manages, in a version no EL repo will ever ship: an
+# actionable High no rebuild can clear (urllib3 pinned every Rocky/Alma image
+# at B from 2026-09-30 and had auto-remediate rebuilding them every cooldown).
+# This applies the rule grype itself applies on RHEL, from the SBOM's
+# relationships ($owned): the owner is rpm/deb/apk, the child is not, their
+# versions agree (one is a prefix of the other, epoch stripped), and — as for
+# vendored — EVERY SBOM entry for that name+version is owned, so a pip-installed
+# copy of the same version elsewhere keeps its findings. The distro feed stays
+# the authority for the owning package, exactly as on RHEL and Ubuntu.
+#
 # artifact.frozen marks a package the image's upgrade-freeze policy pins in
 # place (FREEZE_PKG_REGEX, supply-chain.conf): kernel, accelerator stack, and
 # everything version-locked to them, matching what ansible/roles/freeze bakes
@@ -98,8 +116,10 @@ VULN_PROJECT='{
       schemaVersion: (.descriptor.db.schemaVersion // .descriptor.db.status.schemaVersion)
     }
   },
-  matches: [.matches[] |
-    ($av[.artifact.name + "|" + ((.vulnerability.fix.versions // []) | join(","))]) as $d | {
+  matches: [.matches[]
+    | select((.artifact.type | IN("rpm", "deb", "apk"))
+             or (($owned[.artifact.name + "|" + .artifact.version] // false) | not))
+    | ($av[.artifact.name + "|" + ((.vulnerability.fix.versions // []) | join(","))]) as $d | {
     vulnerability: {
       id: .vulnerability.id, severity: .vulnerability.severity,
       fix: {
@@ -158,7 +178,7 @@ ensure_tools() {
 
 resolve_digest() {
   local repo=$1 tag=$2
-  skopeo inspect --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
+  skopeo inspect --retry-times 5 --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
 }
 
 # grype's descriptor.db.built path changed across DB schema versions; coalesce
@@ -219,6 +239,31 @@ cmd_run() {
     | group_by(.k) | map({key: .[0].k, value: (map(.v) | all)}) | from_entries' "$sbom" 2>/dev/null || echo '{}')
   echo "$vend" | jq -e 'type == "object"' >/dev/null 2>&1 || vend='{}'
 
+  # name|version → "an OS package owns this" for the match filter (see
+  # VULN_PROJECT), judged from the SBOM's ownership-by-file-overlap
+  # relationships. Fails soft to {} — every finding is then kept, as before.
+  local owned
+  owned=$(jq -c '
+    def purl: ((.externalRefs // []) | map(select(.referenceType == "purl")) | .[0].referenceLocator) // "";
+    def os: (purl | test("^pkg:(rpm|deb|apk)/"));
+    def ver: (.versionInfo // "");
+    def noepoch: sub("^[0-9]+:"; "");
+    ((.packages // []) | INDEX(.SPDXID)) as $pkgs
+    | ([.relationships[]?
+         | select(.relationshipType == "OTHER" and ((.comment // "") | startswith("ownership-by-file-overlap")))
+         | $pkgs[.spdxElementId // ""] as $parent | $pkgs[.relatedSpdxElement // ""] as $child
+         | select($parent != null and $child != null and ($parent | os) and (($child | os) | not))
+         | select((($parent | ver | noepoch) | startswith($child | ver))
+                  or (($child | ver) | startswith($parent | ver | noepoch)))
+         | $child.SPDXID] | unique) as $owned
+    | [.packages[]? | select(os | not) | {k: (.name + "|" + ver), v: (.SPDXID | IN($owned[]))}]
+    | group_by(.k) | map({key: .[0].k, value: (map(.v) | all)}) | from_entries' "$sbom" 2>/dev/null || echo '{}')
+  echo "$owned" | jq -e 'type == "object"' >/dev/null 2>&1 || owned='{}'
+  local dropped
+  dropped=$(jq --argjson owned "$owned" '[.matches[]
+    | select(((.artifact.type | IN("rpm", "deb", "apk")) | not)
+             and ($owned[.artifact.name + "|" + .artifact.version] // false))] | length' "$raw")
+
   # Is this image under the upgrade-freeze policy? Judged from the SBOM (see
   # VULN_PROJECT). Fails soft to false — the report then simply predates the
   # frozen field's semantics, same as an unset FREEZE_MARKER_REGEX.
@@ -230,8 +275,8 @@ cmd_run() {
   fi
 
   # Project to the portal contract (see VULN_PROJECT) before publishing.
-  jq -c --argjson av "$avail" --argjson vend "$vend" --argjson isfrozen "$isfrozen" \
-    --arg frz "${FREEZE_PKG_REGEX:-^$}" "$VULN_PROJECT" "$raw" > "$vuln"
+  jq -c --argjson av "$avail" --argjson vend "$vend" --argjson owned "$owned" \
+    --argjson isfrozen "$isfrozen" --arg frz "${FREEZE_PKG_REGEX:-^$}" "$VULN_PROJECT" "$raw" > "$vuln"
 
   local size count built raw_size
   raw_size=$(wc -c < "$raw")
@@ -242,6 +287,7 @@ cmd_run() {
   log "severity: $(jq -rc '[.matches[].vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add // {}' "$vuln")"
   log "fixed-but-not-yet-in-this-distro: $(jq '[.matches[] | select(.vulnerability.fix.availableInDistro == false)] | length' "$vuln")"
   log "bundled copies (vendor rebuild to fix): $(jq '[.matches[] | select(.artifact.vendored)] | length' "$vuln")"
+  log "owned by an OS package (dropped, the distro feed is the authority): ${dropped}"
   log "frozen by upgrade policy (rebuild to fix): $(jq '[.matches[] | select(.artifact.frozen)] | length' "$vuln")"
   [[ "$size" -le "$MAX_VULN_BYTES" ]] || die "report is ${size} bytes (>${MAX_VULN_BYTES}) — size policy needs renegotiation"
 
@@ -285,17 +331,28 @@ publish() {
   local db_date="${built%%T*}"
   git -C "$clone" commit -q -m "Add vuln report for ${repo}@sha256:${hex:0:12} (grype db ${db_date:-unknown}, ${count} findings)"
 
-  local attempt
-  for attempt in 1 2 3; do
+  # Every matrix job (up to 18 per build), the sibling builder and the mirror's
+  # daily refresh push to this one branch, so a rejected push is routine. Retry
+  # with a jittered backoff so jobs that lost the same race do not retry in
+  # lockstep, and re-fetch right before each push so the rebase base is fresh.
+  # A failed rebase (transient fetch error, or a conflict, which the per-image
+  # path layout should never produce) is aborted and simply costs one attempt.
+  local attempt push_attempts=8
+  for attempt in $(seq 1 "$push_attempts"); do
     if GIT_TERMINAL_PROMPT=0 git -C "$clone" push -q origin "$MIRROR_BRANCH"; then
       log "mirror published: ${dest_rel}"
       PUBLISHED="true"
       return 0
     fi
-    log "push failed (attempt ${attempt}/3) — rebasing and retrying"
-    GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"
+    [[ $attempt -lt $push_attempts ]] || break
+    log "push failed (attempt ${attempt}/${push_attempts}) — backing off, rebasing and retrying"
+    sleep $((RANDOM % 10 + attempt * 3))
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"; then
+      log "rebase onto the mirror failed (attempt ${attempt}/${push_attempts}) — aborting it before the next try"
+      git -C "$clone" rebase --abort >/dev/null 2>&1 || true
+    fi
   done
-  die "failed to push to the mirror after 3 attempts"
+  die "failed to push to the mirror after ${push_attempts} attempts"
 }
 
 verify_raw() {
