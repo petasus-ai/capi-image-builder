@@ -24,7 +24,6 @@
   with_fileglob:
     - "{{ role_path }}/files/images/cilium/*"
     - "{{ role_path }}/files/images/openebs/*"
-    - "{{ role_path }}/files/images/dashboard/*"
     - "{{ role_path }}/files/images/kubesphere/*"
     - "{{ role_path }}/files/images/promstack/*"
 
