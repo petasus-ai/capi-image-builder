@@ -62,9 +62,6 @@
         name: nvidia/cuda
       when: accel_provider == "nvidia"
     - include_role:
-        name: rebellions
-      when: accel_provider == "rebellions"
-    - include_role:
         name: ddn
       when: accel_provider == "nvidia"
     - include_role:

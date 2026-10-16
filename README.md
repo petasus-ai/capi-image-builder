@@ -18,14 +18,13 @@ unused: this fork builds the QEMU targets only.
 | `quay.io/edgestack/rocky-9-uefi-kube` | Rocky Linux 9 (UEFI) | `amd64`, `aarch64` |
 
 **Tag grammar:** `v<major>.<minor>.<patch>[-<accelerator>]-<arch>`, where the
-version is the Kubernetes version the image ships and the accelerator is `doca` or
-`rebellions` when present. A tag without an architecture suffix is the multi-arch
+version is the Kubernetes version the image ships and the accelerator is `doca`
+when present. A tag without an architecture suffix is the multi-arch
 manifest list built from the per-arch tags:
 
 ```
 v1.36.3-amd64             plain, x86
 v1.36.3-doca-aarch64      NVIDIA DOCA/OFED + CUDA, arm64
-v1.36.3-rebellions-amd64  Rebellions ATOM driver, x86
 v1.36.3                   manifest list over both architectures
 ```
 
@@ -112,7 +111,6 @@ customize
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 ddn, vast             ┘
-rebellions              accel_provider = rebellions
 manifest              collects the component inventory
 sysprep               kernel cleanup, cache purge, machine-id and log reset
 freeze                  accel_provider = nvidia; must stay last
@@ -174,7 +172,7 @@ out of it is then pinned for the life of the image — see [Upgrade Freeze](#upg
 
 `accel_provider` in `packer/config/common.json` selects the accelerator stack; the
 variant workflows patch it before building. `nvidia` pulls in `nvidia/doca`,
-`nvidia/cuda`, `ddn` and `vast`; `rebellions` pulls in the Rebellions driver role.
+`nvidia/cuda`, `ddn` and `vast`.
 
 The DOCA release the `nvidia/doca` role installs is `doca_version` in the same
 file (default `3.5.0`); override it with `-var doca_version=…` or a
@@ -402,7 +400,6 @@ case the tag name is the Kubernetes version to build.
 |---|---|
 | `main.yaml` | plain images, both distros and architectures |
 | `doca_image.yaml` | `-doca` variants (`accel_provider=nvidia`) |
-| `rebellions.yaml` | `-rebellions` variants |
 | `auto-kube-release.yaml` | nothing — daily detector that dispatches the two build workflows when upstream publishes a Kubernetes patch we have not built (`scripts/pending-kube-builds.py`) |
 | `auto-remediate.yaml` | nothing — daily detector that dispatches rebuilds for images whose readiness grade a rebuild would restore (see below) |
 | `check-sigstore-egress.yaml` | pre-flight: can the runners reach Fulcio, Rekor and the TUF CDN? Read-only, credential-free, no signing |
