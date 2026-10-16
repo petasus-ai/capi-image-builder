@@ -1,7 +1,7 @@
 {
   "containerd_additional_settings": null,
   "containerd_cri_socket": "/var/run/containerd/containerd.sock",
-  "containerd_sha256": "{{ if user `containerd_url` }}{{ user `containerd_url` }}.sha256sum{{ else }}75625e6f6595bb95f3fb9c8123a60534af4a8d9b52d7617065967bcefe71a17a{{ end }}",
-  "containerd_version": "2.3.2",
+  "containerd_sha256": "{{ if user `containerd_url` }}{{ user `containerd_url` }}.sha256sum{{ else }}09a1b669ac6d21e7e24c3c33a9805b48987ba5845e8d88f039c47013a0c0025c{{ end }}",
+  "containerd_version": "2.3.7",
   "runc_version": "1.4.3"
 }
