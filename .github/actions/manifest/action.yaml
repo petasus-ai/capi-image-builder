@@ -51,10 +51,22 @@ runs:
         fi
 
         # A run cancelled between create and rm leaves the list behind in the
-        # local manifest store, where it would shadow the registry next time.
-        sudo docker manifest rm "${IMAGE}:${TAG}" >/dev/null 2>&1 || true
-        sudo docker manifest create "${IMAGE}:${TAG}" "${sources[@]}"
-        sudo docker manifest push "${IMAGE}:${TAG}"
-        # Cleanup only — the tag is already published, so it must not decide
-        # the step's exit status under `set -e`.
-        sudo docker manifest rm "${IMAGE}:${TAG}" || true
+        # local manifest store, where it would shadow the registry next time,
+        # so every attempt starts from the rm. create and push both talk to
+        # quay and either can time out during a network blip, hence the retry
+        # with a growing backoff, as for the image push.
+        for attempt in 1 2 3 4 5; do
+          sudo docker manifest rm "${IMAGE}:${TAG}" >/dev/null 2>&1 || true
+          if sudo docker manifest create "${IMAGE}:${TAG}" "${sources[@]}" \
+             && sudo docker manifest push "${IMAGE}:${TAG}"; then
+            # Cleanup only — the tag is already published, so it must not
+            # decide the step's exit status under `set -e`.
+            sudo docker manifest rm "${IMAGE}:${TAG}" || true
+            exit 0
+          fi
+          echo "::warning::manifest push failed on attempt ${attempt}/5"
+          if [ "${attempt}" -ne 5 ]; then
+            sleep $((attempt * 30))
+          fi
+        done
+        exit 1

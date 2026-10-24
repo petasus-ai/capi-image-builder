@@ -165,7 +165,7 @@ ensure_tools() {
 
 resolve_digest() {
   local repo=$1 tag=$2
-  skopeo inspect --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
+  skopeo inspect --retry-times 5 --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
 }
 
 clone_mirror() {
@@ -316,16 +316,27 @@ publish_mirror() {
   fi
   git -C "$clone" commit -q -m "Add SBOM for ${repo}@sha256:${hex:0:12}"
 
-  local attempt
-  for attempt in 1 2 3; do
+  # Every matrix job (up to 18 per build), the sibling builder and the mirror's
+  # daily refresh push to this one branch, so a rejected push is routine. Retry
+  # with a jittered backoff so jobs that lost the same race do not retry in
+  # lockstep, and re-fetch right before each push so the rebase base is fresh.
+  # A failed rebase (transient fetch error, or a conflict, which the per-image
+  # path layout should never produce) is aborted and simply costs one attempt.
+  local attempt push_attempts=8
+  for attempt in $(seq 1 "$push_attempts"); do
     if GIT_TERMINAL_PROMPT=0 git -C "$clone" push -q origin "$MIRROR_BRANCH"; then
       log "mirror published: ${dest_rel}"
       return 0
     fi
-    log "push failed (attempt ${attempt}/3) — rebasing and retrying"
-    GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"
+    [[ $attempt -lt $push_attempts ]] || break
+    log "push failed (attempt ${attempt}/${push_attempts}) — backing off, rebasing and retrying"
+    sleep $((RANDOM % 10 + attempt * 3))
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"; then
+      log "rebase onto the mirror failed (attempt ${attempt}/${push_attempts}) — aborting it before the next try"
+      git -C "$clone" rebase --abort >/dev/null 2>&1 || true
+    fi
   done
-  die "failed to push to the mirror after 3 attempts"
+  die "failed to push to the mirror after ${push_attempts} attempts"
 }
 
 verify_raw() {
