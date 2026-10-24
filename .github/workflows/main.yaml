@@ -129,6 +129,9 @@ jobs:
           EOF
 
       - name: Build & push container image
+        env:
+          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
         run: |
           COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
@@ -148,8 +151,26 @@ jobs:
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-amd64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
             --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
-          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
+          # quay.io is reached from the self-hosted runners over a link that
+          # drops out for minutes at a time (TLS handshake timeouts, DNS lookup
+          # failures). docker retries each blob a few times internally but gives
+          # up within about a minute, so retry the whole push with a longer
+          # backoff; blobs that already landed are skipped, so a retry only
+          # resends what the blip cut off. Login sits inside the loop because it
+          # is the first request to fail when DNS is what went away.
+          # --password-stdin keeps the token out of the process list of a
+          # runner shared with other jobs.
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$QUAY_PASSWORD" | sudo docker login quay.io/edgestack -u "$QUAY_USER_NAME" --password-stdin \
+               && sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64; then
+              exit 0
+            fi
+            echo "::warning::image push failed on attempt ${attempt}/5"
+            if [ "${attempt}" -ne 5 ]; then
+              sleep $((attempt * 30))
+            fi
+          done
+          exit 1
 
       - name: Create container image manifests
         continue-on-error: true
@@ -244,6 +265,9 @@ jobs:
           EOF
 
       - name: Build & push container image
+        env:
+          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
         run: |
           COMPONENTS="$(cat output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
@@ -263,8 +287,26 @@ jobs:
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-amd64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
             --tag quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64 output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
-          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64
+          # quay.io is reached from the self-hosted runners over a link that
+          # drops out for minutes at a time (TLS handshake timeouts, DNS lookup
+          # failures). docker retries each blob a few times internally but gives
+          # up within about a minute, so retry the whole push with a longer
+          # backoff; blobs that already landed are skipped, so a retry only
+          # resends what the blip cut off. Login sits inside the loop because it
+          # is the first request to fail when DNS is what went away.
+          # --password-stdin keeps the token out of the process list of a
+          # runner shared with other jobs.
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$QUAY_PASSWORD" | sudo docker login quay.io/edgestack -u "$QUAY_USER_NAME" --password-stdin \
+               && sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-amd64; then
+              exit 0
+            fi
+            echo "::warning::image push failed on attempt ${attempt}/5"
+            if [ "${attempt}" -ne 5 ]; then
+              sleep $((attempt * 30))
+            fi
+          done
+          exit 1
 
       - name: Create container image manifests
         continue-on-error: true
@@ -359,6 +401,9 @@ jobs:
           EOF
 
       - name: Build & push container image
+        env:
+          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
         run: |
           COMPONENTS="$(cat output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
@@ -378,8 +423,26 @@ jobs:
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
             --tag quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/ubuntu-2404-kube-${{ steps.patch-version.outputs.kube-version }}
-          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
+          # quay.io is reached from the self-hosted runners over a link that
+          # drops out for minutes at a time (TLS handshake timeouts, DNS lookup
+          # failures). docker retries each blob a few times internally but gives
+          # up within about a minute, so retry the whole push with a longer
+          # backoff; blobs that already landed are skipped, so a retry only
+          # resends what the blip cut off. Login sits inside the loop because it
+          # is the first request to fail when DNS is what went away.
+          # --password-stdin keeps the token out of the process list of a
+          # runner shared with other jobs.
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$QUAY_PASSWORD" | sudo docker login quay.io/edgestack -u "$QUAY_USER_NAME" --password-stdin \
+               && sudo docker push quay.io/edgestack/ubuntu-2404-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64; then
+              exit 0
+            fi
+            echo "::warning::image push failed on attempt ${attempt}/5"
+            if [ "${attempt}" -ne 5 ]; then
+              sleep $((attempt * 30))
+            fi
+          done
+          exit 1
 
       - name: Create container image manifests
         continue-on-error: true
@@ -474,6 +537,9 @@ jobs:
           EOF
 
       - name: Build & push container image
+        env:
+          QUAY_USER_NAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
         run: |
           COMPONENTS="$(cat output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}/components.json)"
           # Disk geometry travels with the image so a DataVolume author does not
@@ -493,8 +559,26 @@ jobs:
             --label "org.opencontainers.image.version=${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64" \
             --label "org.opencontainers.image.vendor=Petasus AI Cloud" \
             --tag quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64 output/rockylinux-10-kube-${{ steps.patch-version.outputs.kube-version }}
-          sudo docker login quay.io/edgestack -u ${{ secrets.QUAY_USER_NAME }} -p ${{ secrets.QUAY_PASSWORD }}
-          sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64
+          # quay.io is reached from the self-hosted runners over a link that
+          # drops out for minutes at a time (TLS handshake timeouts, DNS lookup
+          # failures). docker retries each blob a few times internally but gives
+          # up within about a minute, so retry the whole push with a longer
+          # backoff; blobs that already landed are skipped, so a retry only
+          # resends what the blip cut off. Login sits inside the loop because it
+          # is the first request to fail when DNS is what went away.
+          # --password-stdin keeps the token out of the process list of a
+          # runner shared with other jobs.
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$QUAY_PASSWORD" | sudo docker login quay.io/edgestack -u "$QUAY_USER_NAME" --password-stdin \
+               && sudo docker push quay.io/edgestack/rocky-10-uefi-kube:${{ steps.patch-version.outputs.kube-version }}-cilium-aarch64; then
+              exit 0
+            fi
+            echo "::warning::image push failed on attempt ${attempt}/5"
+            if [ "${attempt}" -ne 5 ]; then
+              sleep $((attempt * 30))
+            fi
+          done
+          exit 1
 
       - name: Create container image manifests
         continue-on-error: true
