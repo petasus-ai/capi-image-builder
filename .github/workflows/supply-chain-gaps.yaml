@@ -1,0 +1,52 @@
+name: Backfill supply-chain gaps
+
+# Every half hour, scripts/supply-chain-gaps.sh compares the per-arch tags this
+# builder pushed 3-72 h ago with the mirror and dispatches
+# backfill-supply-chain.yaml, once per image, for a digest still missing its
+# SBOM, vulnerability report or signature: the SBOM, vulnerability and
+# provenance step can fail while the build job ends green, and nothing here
+# re-runs it.
+
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report only — dispatch nothing'
+        required: true
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+      lookback_hours:
+        description: 'Check tags pushed within this many hours'
+        required: true
+        default: '72'
+
+# actions: write is what dispatching the backfill needs; contents: read for
+# the checkout.
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: supply-chain-gaps
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    steps:
+      - name: Checkout builder
+        uses: actions/checkout@v6
+
+      - name: Backfill recent pushes missing a supply-chain stage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '72' }}
+        run: bash scripts/supply-chain-gaps.sh

@@ -326,6 +326,26 @@ before and after and the build fails if it changed.
   host-side inspection. The pipeline retries the scan inside a Fedora container
   whose newer kernel backs the appliance, built once per runner.
 
+### Backfill
+
+An image that reached quay.io without its supply chain - a publishing step that
+failed while the job stayed green, a job cut off after its push, or a tag pushed
+before these stages existed (2026-08-03) - gets all three stages from the
+`Backfill supply chain` workflow (`backfill-supply-chain.yaml`,
+workflow_dispatch, `repository:tag` pairs such as
+`rocky-9-uefi-kube:v1.34.11-amd64`), on a runner of the image's arch. It does
+not rebuild: `scripts/backfill-sbom.sh` streams the pushed image's disk layer
+from the registry API into tar (checked against the layer digest), so the
+digest already on nodes gains its SBOM, grade and signature. Signing needs the
+workflow's OIDC token, so outside Actions only the SBOM can be backfilled.
+
+`Backfill supply-chain gaps` (`supply-chain-gaps.yaml`) runs
+`scripts/supply-chain-gaps.sh` every half hour: a per-arch tag of
+`IMAGE_REPOS` matching `IMAGE_TAG_RE` (`scripts/supply-chain.conf`) pushed
+3-72 h ago whose digest still lacks a mirror file is dispatched to the
+backfill, once per image, never while a backfill is under way. Older tags are
+left for a dispatch by hand.
+
 ### Vulnerability (CVE) Report
 
 `scripts/vuln-pipeline.sh` scans the **published SBOM** with grype. Unlike the

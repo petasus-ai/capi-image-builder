@@ -1,0 +1,108 @@
+name: Backfill supply chain
+# The images name the run: the sweep reads them back so it dispatches an image
+# once (scripts/supply-chain-gaps.sh).
+run-name: Backfill ${{ inputs.images }}
+
+# The supply-chain stages (.github/actions/supply-chain: SBOM, vulnerability
+# report, keyless signature with SLSA provenance) for an image that reached
+# quay.io without them: a build whose publishing step failed (with the strict
+# toggles off a job still ends green), one cut off after its push, or a tag
+# pushed before the stages existed (2026-08-03).
+#
+# No rebuild: scripts/backfill-sbom.sh streams the pushed image's disk layer
+# back out of the registry, so the digest nodes may already run is the one
+# that gains its SBOM, grade and signature. Every stage skips what the mirror
+# already has unless forced. Dispatched by hand, or by the half-hourly
+# supply-chain-gaps.yaml for a recent push that is still missing a stage.
+
+on:
+  workflow_dispatch:
+    inputs:
+      images:
+        description: 'repository:tag pairs, space-separated (e.g. rocky-9-uefi-kube:v1.34.11-amd64)'
+        required: true
+      force:
+        description: 'Regenerate and overwrite what the mirror already has (SBOM, report and signature)'
+        required: true
+        default: false
+        type: boolean
+
+# id-token: write mints the OIDC token cosign exchanges with Fulcio for the
+# keyless signing certificate, as in the build workflows; the mirror pushes use
+# the MY_TOKEN PAT.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+    outputs:
+      images: ${{ steps.plan.outputs.images }}
+    steps:
+      - name: Read the images
+        id: plan
+        env:
+          IMAGES: ${{ github.event.inputs.images }}
+        run: |
+          # One job per image, on a runner of the image's own arch as the
+          # build ran it (the tag names it: ...-amd64 or ...-aarch64).
+          images=$(printf '%s\n' $IMAGES | jq -Rnc '[inputs | select(length > 0)
+            | capture("^(?<repo>[a-z0-9][a-z0-9.-]*-kube):(?<tag>[A-Za-z0-9_.-]+)$")
+            | . + {arch: (if (.tag | test("aarch64")) then "arm64" else "x64" end)}]')
+          if [ "$(echo "$images" | jq length)" -ne "$(printf '%s\n' $IMAGES | grep -c .)" ]; then
+            echo "::error::every image must read <name>-kube:<tag>"
+            exit 1
+          fi
+          echo "images=${images}" >> "$GITHUB_OUTPUT"
+          echo "$images" | jq -r '.[] | "\(.repo):\(.tag) on \(.arch)"'
+
+  backfill:
+    needs: plan
+    runs-on:
+      - self-hosted
+      - linux
+      - ${{ matrix.arch }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      # Each job unpacks a full image disk on its runner.
+      max-parallel: 2
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.images) }}
+    env:
+      REPO: ${{ matrix.repo }}
+      TAG: ${{ matrix.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate and publish SBOM
+        env:
+          SBOM_TOKEN: ${{ secrets.MY_TOKEN }}
+          SBOM_FORCE: ${{ github.event.inputs.force }}
+          QUAY_USERNAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: scripts/backfill-sbom.sh "$REPO" "$TAG"
+
+      - name: Scan and publish vulnerability report
+        env:
+          VULN_TOKEN: ${{ secrets.MY_TOKEN }}
+          VULN_FORCE: ${{ github.event.inputs.force }}
+        run: scripts/vuln-pipeline.sh run "$REPO" "$TAG"
+
+      - name: Sign, attest and publish provenance
+        env:
+          PROV_TOKEN: ${{ secrets.MY_TOKEN }}
+          PROV_FORCE: ${{ github.event.inputs.force }}
+          QUAY_USERNAME: ${{ secrets.QUAY_USER_NAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+        run: scripts/provenance-pipeline.sh run "$REPO" "$TAG"
+
+      - name: Final clean up
+        if: always()
+        run: |
+          sudo docker system prune -f || true
