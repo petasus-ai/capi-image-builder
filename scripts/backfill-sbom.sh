@@ -109,10 +109,14 @@ if [[ "sha256:$(sha256sum "$BLOB" | cut -d' ' -f1)" != "$layer" ]]; then
   exit 1
 fi
 echo "[backfill] layer verified; extracting the disk"
-tar -xzf "$BLOB" -C "$WORK" --wildcards "$IMAGE_DISK_GLOB"
+# Overlay whiteouts (.wh.*) are layer bookkeeping, not files: an ADD into a
+# fresh directory leaves an empty disk/.wh..wh..opq beside the disk, which an
+# extensionless IMAGE_DISK_GLOB ("disk/*") would otherwise take as the disk.
+tar -xzf "$BLOB" -C "$WORK" --wildcards --exclude='*/.wh.*' "$IMAGE_DISK_GLOB"
 rm -f "$BLOB"
 
-QCOW2=$(find "$WORK/disk" -type f | head -1)
+# The largest file is the disk, whatever else the glob let through.
+QCOW2=$(find "$WORK/disk" -type f ! -name '.wh.*' -exec ls -1S {} + 2>/dev/null | head -1)
 [[ -n "$QCOW2" ]] || { echo "[backfill] ERROR: no disk image found in the layer" >&2; exit 1; }
 echo "[backfill] extracted $(basename "$QCOW2") ($(du -h "$QCOW2" | cut -f1))"
 
