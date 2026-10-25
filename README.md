@@ -334,9 +334,10 @@ before these stages existed (2026-08-03) - gets all three stages from the
 `Backfill supply chain` workflow (`backfill-supply-chain.yaml`,
 workflow_dispatch, `repository:tag` pairs such as
 `rocky-9-uefi-kube:v1.34.11-amd64`), on a runner of the image's arch. It does
-not rebuild: `scripts/backfill-sbom.sh` streams the pushed image's disk layer
-from the registry API into tar (checked against the layer digest), so the
-digest already on nodes gains its SBOM, grade and signature. Signing needs the
+not rebuild: `scripts/backfill-sbom.sh` downloads the pushed image's disk
+layer from the registry API (resuming where the runners' link drops it,
+checked against the layer digest) and extracts the disk, so the digest already
+on nodes gains its SBOM, grade and signature. Signing needs the
 workflow's OIDC token, so outside Actions only the SBOM can be backfilled.
 
 `Backfill supply-chain gaps` (`supply-chain-gaps.yaml`) runs
