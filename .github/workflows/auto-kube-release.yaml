@@ -34,7 +34,8 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  # write: the releases that mark a version complete (Mark complete versions)
+  contents: write
   # workflow_dispatch is one of the two events GITHUB_TOKEN is still allowed to
   # raise (the recursion guard exempts it), so no PAT is needed here.
   actions: write
@@ -59,7 +60,7 @@ jobs:
         id: detect
         run: |
           set -euo pipefail
-          scripts/pending-kube-builds.py > pending.json
+          scripts/pending-kube-builds.py --complete-out complete.json > pending.json
           echo "count=$(python3 -c 'import json; print(len(json.load(open("pending.json"))))')" >> "$GITHUB_OUTPUT"
 
       - name: Summarise
@@ -153,6 +154,56 @@ jobs:
           done < dispatch-list
           exit $rc
 
+      # A version whose every image is published (both distros, plain and DOCA,
+      # both arches) gets a release kube-v<semver>, created once. Consumers that
+      # must not take a half-published patch follow these releases instead of the
+      # tags: edgespray's Renovate moves its kube_image_version by them. The images
+      # come out over hours, one workflow per flavour and distro, so no single tag
+      # says the set is done; the ledger the detector already reads does.
+      - name: Mark complete versions
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          rc=0
+          for version in $(python3 -c 'import json; print(" ".join(json.load(open("complete.json"))))'); do
+            tag="kube-${version}"
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/releases/tags/${tag}") || code="000"
+            case "$code" in
+              200) continue ;;
+              404) ;;
+              *) echo "FAIL  ${tag}: lookup HTTP ${code}"; rc=1; continue ;;
+            esac
+            body=$(VERSION="$version" python3 -c '
+          import json, os
+          v = os.environ["VERSION"]
+          images = ["- quay.io/edgestack/%s:%s%s-%s" % (repo, v, flavour, arch)
+                    for repo in ("ubuntu-2404-kube", "rocky-9-uefi-kube")
+                    for flavour in ("", "-doca") for arch in ("amd64", "aarch64")]
+          print(json.dumps({"tag_name": "kube-" + v, "target_commitish": os.environ["SHA"],
+                            "name": "Kubernetes %s node images" % v, "make_latest": "false",
+                            "body": "\n".join(["Every node image of Kubernetes %s is published:" % v, ""] + images)}))
+          ')
+            code=$(curl -sS -o release-response -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}/releases" -d "$body") || code="000"
+            if [ "$code" = "201" ]; then
+              echo "mark  ${tag}"
+            else
+              echo "FAIL  ${tag}: HTTP ${code}"
+              cat release-response 2>/dev/null || true
+              echo
+              rc=1
+            fi
+          done
+          exit $rc
       - name: Report dry run
         if: ${{ steps.detect.outputs.count != '0' && inputs.dry_run == true }}
         run: echo "Dry run - ${{ steps.detect.outputs.count }} dispatch(es) withheld."

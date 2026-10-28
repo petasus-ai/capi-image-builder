@@ -28,9 +28,18 @@ yet. dl.k8s.io flips to a new version before the apt index and the matching
 cri-tools release are necessarily in place, and a build started inside that
 window fails deep inside packer instead of at the gate.
 
+The same ledger also says which tracked patches are complete: every repository,
+flavour and arch published. --complete-out writes those versions to a file, for
+the workflow to mark each with a release (kube-v<semver>) that consumers such as
+edgespray's Renovate follow; a version is never marked while any of its images is
+missing, so following the releases never picks a half-published patch.
+
 Usage:
   pending-kube-builds.py             stdout: JSON array, stderr: human log
   pending-kube-builds.py --quiet     suppress the human log
+  pending-kube-builds.py --complete-out FILE
+                                     also write the complete versions, a JSON
+                                     array such as ["v1.36.5", "v1.37.1"]
 
 Output — one object per workflow dispatch that should happen:
   [{"workflow": "main.yaml", "os": "ubuntu", "kube_version": "v1.35.7",
@@ -211,6 +220,11 @@ def main():
     parser.add_argument(
         "--quiet", action="store_true", help="suppress the human-readable log on stderr"
     )
+    parser.add_argument(
+        "--complete-out",
+        metavar="FILE",
+        help="write the tracked versions whose images are all published to FILE",
+    )
     args = parser.parse_args()
     if args.quiet:
         global log
@@ -271,6 +285,17 @@ def main():
             )
         )
     log("{} dispatch(es) pending".format(len(pending)))
+
+    if args.complete_out:
+        incomplete = {item["kube_version"] for item in pending}
+        complete = sorted(
+            (v for v in targets.values() if v not in incomplete), key=sort_key
+        )
+        for version in complete:
+            log("done  {}: every image published".format(version))
+        with open(args.complete_out, "w") as out:
+            json.dump(complete, out)
+            out.write("\n")
 
     json.dump(pending, sys.stdout)
     sys.stdout.write("\n")
