@@ -44,6 +44,9 @@
     dest: /etc/modules-load.d/kubernetes.conf
     mode: 0644
 
+- import_tasks: nouveau.yml
+  when: accel_provider != "nvidia"
+
 - name: Set and persist kernel params
   sysctl:
     name: "{{ item.param }}"

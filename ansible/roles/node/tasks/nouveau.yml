@@ -1,0 +1,22 @@
+---
+# Plain images ship nouveau (Ubuntu linux-modules-extra, Rocky kernel-modules),
+# which claims a passed-through GPU at boot before the GPU Operator's driver
+# can. Disable it as NVIDIA documents; accelerator images do the same in
+# roles/nvidia/cuda.
+- name: Disable nouveau
+  copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    mode: "0644"
+    content: |
+      blacklist nouveau
+      options nouveau modeset=0
+
+- name: Rebuild the initramfs with the blacklist (Ubuntu)
+  command: update-initramfs -u -k all
+  changed_when: true
+  when: ansible_os_family == "Debian"
+
+- name: Rebuild the initramfs with the blacklist (EL)
+  command: dracut -f
+  changed_when: true
+  when: ansible_os_family == "RedHat"

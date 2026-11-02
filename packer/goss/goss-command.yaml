@@ -130,6 +130,29 @@ command:
     stderr: []
     timeout: 0
 {{end}}
+{{if ne .Vars.accel_provider "nvidia"}}
+# ansible/roles/node/tasks/nouveau.yml: modprobe reads the blacklist, and an
+# initramfs holding nouveau.ko holds it too (NR < 100: unreadable initramfs).
+  modprobe -c | grep -xE 'blacklist nouveau|options nouveau modeset=0' | sort -u | wc -l:
+    exit-status: 0
+    stdout: ["/^2$/"]
+    stderr: []
+    timeout: 0
+{{if eq .Vars.OS "ubuntu"}}
+  lsinitramfs /boot/initrd.img-$(uname -r) | awk '/\/nouveau\.ko/{m=1} /etc\/modprobe\.d\/blacklist-nouveau\.conf$/{b=1} END{print NR " entries, nouveau.ko " m+0 ", blacklist " b+0; exit (NR < 100 || (m && !b))}':
+    exit-status: 0
+    stdout: []
+    stderr: []
+    timeout: 60000
+{{end}}
+{{if eq .Vars.OS "rockylinux"}}
+  lsinitrd /boot/initramfs-$(uname -r).img | awk '/\/nouveau\.ko/{m=1} /etc\/modprobe\.d\/blacklist-nouveau\.conf$/{b=1} END{print NR " entries, nouveau.ko " m+0 ", blacklist " b+0; exit (NR < 100 || (m && !b))}':
+    exit-status: 0
+    stdout: []
+    stderr: []
+    timeout: 60000
+{{end}}
+{{end}}
 {{range $name, $vers := index .Vars .Vars.OS .Vars.PROVIDER "command"}}
   {{ $name }}:
   {{range $key, $val := $vers}}

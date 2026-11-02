@@ -103,7 +103,7 @@ editing the committed files.
 
 ```
 setup*                repos, dist-upgrade, base packages
-node                  sysctls, kernel modules, swap off, auditd
+node                  sysctls, kernel modules, swap off, auditd; nouveau off on plain images
 kernel                asserts the guest booted the newest kernel
 providers             cloud-init packages and service boot ordering
 containerd
@@ -229,7 +229,8 @@ out of it is then pinned for the life of the image — see [Upgrade Freeze](#upg
 
 `accel_provider` in `packer/config/common.json` selects the accelerator stack; the
 variant workflows patch it before building. `nvidia` pulls in `nvidia/doca`,
-`nvidia/cuda` and `vast`.
+`nvidia/cuda` and `vast`. Plain images disable nouveau in `node` instead, so the GPU
+Operator's driver can claim a passed-through GPU.
 
 The DOCA release the `nvidia/doca` role installs is `doca_version` in the same
 file (default `3.5.0`); override it with `-var doca_version=…` or a
