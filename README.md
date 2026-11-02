@@ -263,9 +263,9 @@ The script is shared verbatim with edgestack-image-builder; change both copies
 together. `ib_ipoib` is loaded so an IB-only function is reachable by IP without
 a per-node modules-load entry.
 
-Plain images carry none of this: `linux-modules-extra` / `kernel-modules-extra`,
-and with them `mlx5_ib`, are installed only by `nvidia/doca`. A guest that needs
-an InfiniBand stack has to boot the DOCA image.
+Plain images carry none of this (no DOCA-OFED, `openibd` or `mlx-modules-ensure`),
+only the distro's in-tree `mlx5_ib` (Ubuntu `linux-modules-extra`, Rocky
+`kernel-modules`). Use the DOCA image for an InfiniBand stack.
 
 ## Upgrade Freeze
 
