@@ -7,4 +7,39 @@
         update_cache: true
       become: true
 
+    # Ubuntu's agent ships with no RPC filter, so every command is on. That
+    # includes guest-exec, guest-exec-status and guest-file-*, which give
+    # whoever reaches the host-side channel root command execution and
+    # arbitrary file read/write inside the VM. It also includes
+    # guest-set-user-password and guest-ssh-*-authorized-keys, which let that
+    # channel reset a user's password or SSH keys. Allow only
+    # guest_agent_allow_rpcs (vars/main.yml), the same list el_main.yml writes
+    # for Rocky.
+    #
+    # Also turn on the fsfreeze hook. Rocky enables it and Ubuntu leaves it
+    # off. With the hook on, a snapshot freeze runs whatever is dropped into
+    # /etc/qemu/fsfreeze-hook.d. The script the package ships exits 0 when
+    # that directory is empty.
+    #
+    # The unit is static: udev starts it when the virtio-serial port appears.
+    # There is nothing to enable.
+    - name: Create the guest agent fsfreeze hook directory
+      file:
+        path: /etc/qemu/fsfreeze-hook.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure the guest agent
+      copy:
+        dest: /etc/qemu/qemu-ga.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [general]
+          allow-rpcs={{ guest_agent_allow_rpcs | join(',') }}
+          fsfreeze-hook=/etc/qemu/fsfreeze-hook
+
     when: ansible_os_family == "Debian"

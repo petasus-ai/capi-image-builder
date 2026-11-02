@@ -1,0 +1,50 @@
+---
+# The guest agent RPCs every image allows, on Rocky (FILTER_RPC_ARGS in
+# /etc/sysconfig/qemu-ga) and Ubuntu (allow-rpcs in /etc/qemu/qemu-ga.conf).
+# This is the allow-list Rocky's qemu-guest-agent package ships (CentOS Stream
+# c10s qemu-ga.sysconfig) with the credential RPCs taken out. The package list
+# already leaves out guest-exec, guest-exec-status and guest-file-*, which
+# would give whoever reaches the host-side channel root command execution and
+# arbitrary file read/write inside the VM.
+#
+# guest-set-user-password and guest-ssh-{get,add,remove}-authorized-keys are
+# off as well. They would let the host side reset a user's password or replace
+# their SSH keys (KubeVirt accessCredentials with qemuGuestAgent propagation).
+# Users get their credentials from cloud-init at first boot instead.
+#
+# Because this is an allow-list, a command that a later QEMU adds stays off
+# until someone reviews it. qemu-ga ignores names it does not implement
+# (24.04 has no guest-get-load).
+guest_agent_allow_rpcs:
+  - guest-sync-delimited
+  - guest-sync
+  - guest-ping
+  - guest-get-time
+  - guest-set-time
+  - guest-info
+  - guest-shutdown
+  - guest-fsfreeze-status
+  - guest-fsfreeze-freeze
+  - guest-fsfreeze-freeze-list
+  - guest-fsfreeze-thaw
+  - guest-fstrim
+  - guest-suspend-disk
+  - guest-suspend-ram
+  - guest-suspend-hybrid
+  - guest-network-get-interfaces
+  - guest-get-vcpus
+  - guest-set-vcpus
+  - guest-get-disks
+  - guest-get-fsinfo
+  - guest-get-memory-blocks
+  - guest-set-memory-blocks
+  - guest-get-memory-block-info
+  - guest-get-host-name
+  - guest-get-users
+  - guest-get-timezone
+  - guest-get-osinfo
+  - guest-get-devices
+  - guest-get-diskstats
+  - guest-get-cpustats
+  - guest-network-get-route
+  - guest-get-load

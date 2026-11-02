@@ -112,7 +112,7 @@ load_additional_…     optional extra images and executables
 cni
 addons
 security
-customize
+customize             qemu-guest-agent (see Guest Agent), nerdctl, update-cert.sh
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 vast                  ┘
@@ -136,6 +136,42 @@ place. Only enablement is asserted, through a command rather than goss's
 service resource: that resource insists on a `running` expectation as well, and
 all three are oneshot units the build runs by hand, so their active state at
 capture says nothing about a booted node.
+
+## Guest Agent
+
+Every image ships `qemu-guest-agent` (`ansible/roles/customize`) with the same
+RPC allow-list on Rocky and Ubuntu (`guest_agent_allow_rpcs` in
+`ansible/roles/customize/vars/main.yml`). Two groups of commands are off:
+`guest-exec`, `guest-exec-status` and `guest-file-*`, which would give whoever
+reaches the host-side channel root command execution and arbitrary file
+read/write inside the node, and `guest-set-user-password` and
+`guest-ssh-{get,add,remove}-authorized-keys`, which would let the host side
+reset a user's password or replace their SSH keys. KubeVirt
+`accessCredentials` with the `qemuGuestAgent` propagation method therefore does
+not work on these images. KubeVirt reports the agent as unsupported for such a
+VMI, and its `guest-exec` / `guest-file-*` fallback for SSH keys is off too
+([`guestagent.go`, release-1.9](https://github.com/kubevirt/kubevirt/blob/release-1.9/pkg/virt-handler/guestagent.go)).
+The other operator RPCs stay on: the basic set KubeVirt requires before it
+treats an agent as supported (`guest-info`, `guest-get-osinfo`,
+`guest-get-users`, ...), `guest-get-load` for its guest load metrics, and
+`guest-fsfreeze-*` / `guest-fstrim` for consistent snapshots and trim. A
+command that a later QEMU adds stays off until someone reviews it.
+
+* **Rocky 10**: the package's allow-list in `/etc/sysconfig/qemu-ga` already
+  leaves out `guest-exec*` and `guest-file-*`. The role replaces
+  `FILTER_RPC_ARGS` there with the shared list, which also drops the
+  credential RPCs. The unit is enabled. `virt_qemu_ga_read_nonsecurity_files`
+  is on, so freeze/trim keep working if a node is switched back to enforcing
+  (the image ships permissive, see `ansible/roles/security`).
+  `virt_qemu_ga_manage_ssh` and `virt_qemu_ga_run_unconfined` are off.
+* **Ubuntu 24.04** ships no filter, so `/etc/qemu/qemu-ga.conf` sets the same
+  list as `allow-rpcs=` and turns on the fsfreeze hook Rocky enables by
+  default (`/etc/qemu/fsfreeze-hook`, scripts in `/etc/qemu/fsfreeze-hook.d/`).
+  The unit is static and udev starts it when the virtio-serial port appears.
+
+`packer/goss/goss-command.yaml` asserts both halves on every build: Rocky from
+the sysconfig allow-list, Ubuntu from `qemu-ga -D`, which prints the
+configuration the agent would run with.
 
 ## Kernel Currency
 
