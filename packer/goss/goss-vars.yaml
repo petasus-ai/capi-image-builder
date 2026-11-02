@@ -68,6 +68,7 @@ rockylinux:
     package:
       cloud-init:
       python3-netifaces:
+      qemu-guest-agent:
       <<: *rh8_rpms
 ubuntu:
   common-kernel-param:
@@ -89,3 +90,4 @@ ubuntu:
       cloud-guest-utils:
       cloud-initramfs-copymods:
       cloud-initramfs-dyn-netconf:
+      qemu-guest-agent:

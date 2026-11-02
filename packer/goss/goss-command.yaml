@@ -67,6 +67,69 @@ command:
     stderr: []
     timeout: 0
 {{end}}
+# The guest agent RPC surface from ansible/roles/customize, on every image.
+# 13 RPCs must be enabled: KubeVirt's basic set (virt-handler
+# requiredGuestAgentCommands) and the fsfreeze calls VM snapshots make. 12 must
+# not be: guest-exec* and guest-file-*, which would give the host-side channel
+# root command execution or arbitrary file read/write, and
+# guest-set-user-password and guest-ssh-*-authorized-keys, which would let it
+# reset a user's password or SSH keys. One count per side, because a grep over
+# the whole list exits 0 when any single name matches.
+{{if eq .Vars.OS "rockylinux"}}
+# The role writes the allow-list into FILTER_RPC_ARGS in /etc/sysconfig/qemu-ga,
+# which the unit passes on the command line.
+  sed -n 's/^FILTER_RPC_ARGS="--allow-rpcs=\(.*\)"$/\1/p' /etc/sysconfig/qemu-ga | tr ',' '\n' | grep -cxE 'guest-(ping|get-time|info|shutdown|network-get-interfaces|get-fsinfo|get-host-name|get-users|get-timezone|get-osinfo|fsfreeze-(status|freeze|thaw))':
+    exit-status: 0
+    stdout: ["/^13$/"]
+    stderr: []
+    timeout: 0
+  sed -n 's/^FILTER_RPC_ARGS="--allow-rpcs=\(.*\)"$/\1/p' /etc/sysconfig/qemu-ga | tr ',' '\n' | grep -cxE 'guest-(exec|exec-status|file-(open|close|read|write|seek|flush)|set-user-password|ssh-(get|add|remove)-authorized-keys)':
+    exit-status: 1
+    stdout: ["/^0$/"]
+    stderr: []
+    timeout: 0
+  systemctl cat qemu-guest-agent | grep -cF '${FILTER_RPC_ARGS}':
+    exit-status: 0
+    stdout: ["/^1$/"]
+    stderr: []
+    timeout: 0
+  systemctl is-enabled qemu-guest-agent:
+    exit-status: 0
+    stdout: ["/^enabled$/"]
+    stderr: []
+    timeout: 0
+  getsebool virt_qemu_ga_manage_ssh:
+    exit-status: 0
+    stdout: ["virt_qemu_ga_manage_ssh --> off"]
+    stderr: []
+    timeout: 0
+  getsebool virt_qemu_ga_read_nonsecurity_files:
+    exit-status: 0
+    stdout: ["virt_qemu_ga_read_nonsecurity_files --> on"]
+    stderr: []
+    timeout: 0
+{{end}}
+{{if eq .Vars.OS "ubuntu"}}
+# Ubuntu's package ships no filter; the role writes the same allow-list into
+# /etc/qemu/qemu-ga.conf. `qemu-ga -D` prints the configuration the agent would
+# run with -- that file merged over the defaults -- and exits without opening
+# the channel.
+  qemu-ga -D | sed -n 's/^allow-rpcs=//p' | tr ',' '\n' | grep -cxE 'guest-(ping|get-time|info|shutdown|network-get-interfaces|get-fsinfo|get-host-name|get-users|get-timezone|get-osinfo|fsfreeze-(status|freeze|thaw))':
+    exit-status: 0
+    stdout: ["/^13$/"]
+    stderr: []
+    timeout: 0
+  qemu-ga -D | sed -n 's/^allow-rpcs=//p' | tr ',' '\n' | grep -cxE 'guest-(exec|exec-status|file-(open|close|read|write|seek|flush)|set-user-password|ssh-(get|add|remove)-authorized-keys)':
+    exit-status: 1
+    stdout: ["/^0$/"]
+    stderr: []
+    timeout: 0
+  qemu-ga -D | grep -cxE 'block-rpcs=|fsfreeze-hook=/etc/qemu/fsfreeze-hook':
+    exit-status: 0
+    stdout: ["/^2$/"]
+    stderr: []
+    timeout: 0
+{{end}}
 {{range $name, $vers := index .Vars .Vars.OS .Vars.PROVIDER "command"}}
   {{ $name }}:
   {{range $key, $val := $vers}}

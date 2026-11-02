@@ -1,0 +1,54 @@
+---
+# The GenericCloud base image happens to include the agent; install it
+# explicitly so the image does not depend on that.
+- name: Install guest agent
+  yum:
+    name: qemu-guest-agent
+    state: present
+    lock_timeout: 60
+
+# Rocky's package ships an allow-list in /etc/sysconfig/qemu-ga, and the unit
+# passes it on the command line as ${FILTER_RPC_ARGS}. That list already
+# leaves out guest-exec, guest-exec-status and guest-file-*, but it allows
+# guest-set-user-password and guest-ssh-*-authorized-keys, which let the
+# host-side channel reset a user's password or SSH keys. Replace the active
+# line with guest_agent_allow_rpcs (vars/main.yml), the list without those
+# four. deb_main.yml writes the same list for Ubuntu, and packer/goss asserts
+# it on every image. The file is %config(noreplace), so a package update
+# keeps this edit.
+- name: Restrict the guest agent RPCs
+  lineinfile:
+    path: /etc/sysconfig/qemu-ga
+    regexp: '^FILTER_RPC_ARGS='
+    line: >-
+      FILTER_RPC_ARGS="--allow-rpcs={{ guest_agent_allow_rpcs | join(',') }}"
+
+# The unit is WantedBy the virtio-serial port device. Enabling it starts the
+# agent whenever the hypervisor attaches the channel, whatever the presets say.
+- name: Enable the guest agent
+  service:
+    name: qemu-guest-agent
+    enabled: yes
+
+# Under SELinux enforcing, virt_qemu_ga_t may not open the mounted filesystems
+# that guest-fsfreeze-* and guest-fstrim act on (VM snapshots, trim) unless
+# virt_qemu_ga_read_nonsecurity_files is on. Red Hat's RHEL 10 VM guide
+# prescribes that boolean for those commands. It widens what the agent process
+# may read, but with guest-file-* filtered out, no RPC reads a file for the
+# host. virt_qemu_ga_manage_ssh would let the agent write users' ~/.ssh, which
+# only the SSH key RPCs need, so it is held off. virt_qemu_ga_run_unconfined
+# stays off as well. The image ships permissive (roles/security), so the
+# booleans gate nothing today. They matter on a node switched back to
+# enforcing.
+# setsebool rather than ansible.posix.seboolean: the module needs
+# python3-libsemanage in the guest, which GenericCloud does not promise.
+- name: Read the guest agent SELinux booleans
+  command: getsebool virt_qemu_ga_manage_ssh virt_qemu_ga_read_nonsecurity_files
+  register: _qga_sebool
+  changed_when: false
+
+- name: Set the guest agent SELinux booleans persistently
+  command: setsebool -P virt_qemu_ga_manage_ssh=off virt_qemu_ga_read_nonsecurity_files=on
+  when: >-
+    'virt_qemu_ga_manage_ssh --> on' in _qga_sebool.stdout or
+    'virt_qemu_ga_read_nonsecurity_files --> off' in _qga_sebool.stdout
