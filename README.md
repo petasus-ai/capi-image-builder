@@ -225,6 +225,32 @@ shipping a kernel/module mismatch.
 All of this is build-time currency. On accelerator images the kernel that comes
 out of it is then pinned for the life of the image — see [Upgrade Freeze](#upgrade-freeze).
 
+## GPU Driver Boot Defaults
+
+Every image variant, including plain, NVIDIA/DOCA and AMD images, adds these
+kernel arguments through the `gpu_blacklist` role:
+
+```text
+modprobe.blacklist=nouveau,amdgpu nouveau.modeset=0
+```
+
+Existing kernel arguments and other blacklisted modules are preserved. Ubuntu
+regenerates GRUB from a managed drop-in; Rocky updates all kernel boot entries
+and persists the defaults. The role verifies the generated boot arguments during
+the build. Existing modprobe and initramfs configuration remains in place.
+
+This prevents automatic loading of the distribution's GPU drivers before a
+runtime-installed driver can claim the device. AMD also documents blacklisting
+the inbox driver before installing an out-of-tree driver
+([AMD GPU Operator installation guide](https://instinct.docs.amd.com/projects/gpu-operator/en/latest/drivers/installation.html)).
+
+The blacklist applies to module names, so it also affects automatic loading of
+`amdgpu-dkms` on AMD images. The GPU Operator or an explicit `modprobe amdgpu`
+must load the installed module; no automatic loading service is added by the
+builder. A modprobe blacklist does not prevent loading a module explicitly by
+name without `--use-blacklist`
+([kmod documentation](https://github.com/kmod-project/kmod/blob/master/man/modprobe.d.5.scd)).
+
 ## Accelerator Variants
 
 `accel_provider` in `packer/config/common.json` selects the accelerator stack; the

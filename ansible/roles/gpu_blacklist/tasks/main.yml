@@ -1,0 +1,115 @@
+---
+- name: Ensure the GRUB drop-in directory exists (Ubuntu)
+  file:
+    path: /etc/default/grub.d
+    state: directory
+    mode: '0755'
+  when: ansible_os_family == 'Debian'
+
+- name: Install the GPU blacklist GRUB drop-in (Ubuntu)
+  copy:
+    src: gpu-blacklist.cfg
+    dest: /etc/default/grub.d/99-gpu-blacklist.cfg
+    mode: '0644'
+  when: ansible_os_family == 'Debian'
+
+- name: Regenerate the GRUB menu (Ubuntu)
+  command: update-grub
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure grubby is installed (EL)
+  package:
+    name: grubby
+    state: present
+  when: ansible_os_family == 'RedHat'
+
+- name: Read normalized GRUB defaults (EL)
+  shell: |
+    set -e
+    . /etc/default/grub
+    {{ lookup('file', 'gpu-blacklist.cfg') }}
+    printf '%s\n' "$GRUB_CMDLINE_LINUX" "$GRUB_CMDLINE_LINUX_DEFAULT"
+  register: _gpu_grub_defaults
+  changed_when: false
+  when: ansible_os_family == 'RedHat'
+
+# Each entry can have a different blacklist. Merge it rather than replacing
+# every entry with the same value and losing an unrelated module exclusion.
+- name: Apply the GPU blacklist to every kernel entry (EL)
+  shell: |
+    set -eu
+    set -f
+    entries=$(grubby --info=ALL)
+    printf '%s\n' "$entries" | while IFS= read -r line; do
+      case "$line" in
+        index=*) index=${line#index=} ;;
+        args=*)
+          GRUB_CMDLINE_LINUX=${line#args=\"}
+          GRUB_CMDLINE_LINUX=${GRUB_CMDLINE_LINUX%\"}
+          GRUB_CMDLINE_LINUX_DEFAULT=
+          {{ lookup('file', 'gpu-blacklist.cfg') | indent(10) }}
+          for arg in $GRUB_CMDLINE_LINUX; do
+            case "$arg" in modprobe.blacklist=*) blacklist=$arg ;; esac
+          done
+          grubby --update-kernel="$index" --remove-args="modprobe.blacklist nouveau.modeset" --args="$blacklist nouveau.modeset=0"
+          ;;
+      esac
+    done
+  when: ansible_os_family == 'RedHat'
+
+# Persist the defaults independently of entry-specific arguments.
+- name: Persist normalized GRUB defaults (EL)
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}={{ item.value | quote }}'
+  loop:
+    - key: GRUB_CMDLINE_LINUX
+      value: '{{ _gpu_grub_defaults.stdout_lines[0] }}'
+    - key: GRUB_CMDLINE_LINUX_DEFAULT
+      value: '{{ _gpu_grub_defaults.stdout_lines[1] | default("") }}'
+  when: ansible_os_family == 'RedHat'
+
+- name: Ensure the kernel-install configuration directory exists (EL)
+  file:
+    path: /etc/kernel
+    state: directory
+    mode: '0755'
+  when: ansible_os_family == 'RedHat'
+
+- name: Normalize future kernel-install arguments (EL)
+  shell: |
+    set -eu
+    if [ -f /etc/kernel/cmdline ]; then
+      GRUB_CMDLINE_LINUX=$(cat /etc/kernel/cmdline)
+    else
+      GRUB_CMDLINE_LINUX=$(grubby --info=DEFAULT | sed -n 's/^args="\(.*\)"$/\1/p')
+    fi
+    GRUB_CMDLINE_LINUX_DEFAULT=
+    {{ lookup('file', 'gpu-blacklist.cfg') }}
+    printf '%s\n' "$GRUB_CMDLINE_LINUX"
+  register: _gpu_kernel_cmdline
+  changed_when: false
+  when: ansible_os_family == 'RedHat'
+
+- name: Persist future kernel-install arguments (EL)
+  copy:
+    content: "{{ _gpu_kernel_cmdline.stdout }}\n"
+    dest: /etc/kernel/cmdline
+    mode: '0644'
+  when: ansible_os_family == 'RedHat'
+
+- name: Read generated kernel boot entries
+  command: '{{ "grubby --info=ALL" if ansible_os_family == "RedHat" else "cat /boot/grub/grub.cfg" }}'
+  register: _gpu_boot_entries
+  changed_when: false
+
+- name: Verify GPU blacklist in every kernel boot entry
+  command:
+    argv:
+      - '{{ ansible_facts.python.executable }}'
+      - -c
+      - '{{ lookup("file", "verify-args.py") }}'
+      - '{{ "--grubby" if ansible_os_family == "RedHat" else "--grub" }}'
+    stdin: '{{ _gpu_boot_entries.stdout }}'
+  changed_when: false
