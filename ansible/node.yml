@@ -58,10 +58,12 @@
     - include_role:
         name: vast
       when: accel_provider == "nvidia"
-    # Last before sysprep: every component must already be installed, and
+    # After component installation: every component must already be installed, and
     # sysprep starts removing the traces the probes read.
     - include_role:
         name: manifest
+    - include_role:
+        name: gpu_blacklist
     - include_role:
         name: sysprep
     # Must stay last: bakes the upgrade freeze (apt pins/holds, dnf excludes)

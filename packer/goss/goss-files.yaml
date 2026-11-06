@@ -15,6 +15,15 @@ file:
     - {{.}}
   {{end}}
 {{end}}
+{{if ne .Vars.accel_provider "nvidia"}}
+# ansible/roles/node/tasks/nouveau.yml
+  /etc/modprobe.d/blacklist-nouveau.conf:
+    exists: true
+    filetype: file
+    contains:
+    - "blacklist nouveau"
+    - "options nouveau modeset=0"
+{{end}}
 {{if eq .Vars.accel_provider "nvidia"}}
 # The ExecStart targets of the units asserted in goss-service.yaml; an enabled
 # unit whose script went missing would otherwise pass.

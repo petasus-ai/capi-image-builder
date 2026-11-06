@@ -103,7 +103,7 @@ editing the committed files.
 
 ```
 setup*                repos, dist-upgrade, base packages
-node                  sysctls, kernel modules, swap off, auditd
+node                  sysctls, kernel modules, swap off, auditd; nouveau off on plain images
 kernel                asserts the guest booted the newest kernel
 providers             cloud-init packages and service boot ordering
 containerd
@@ -225,11 +225,38 @@ shipping a kernel/module mismatch.
 All of this is build-time currency. On accelerator images the kernel that comes
 out of it is then pinned for the life of the image — see [Upgrade Freeze](#upgrade-freeze).
 
+## GPU Driver Boot Defaults
+
+Every image variant, including plain, NVIDIA/DOCA and AMD images, adds these
+kernel arguments through the `gpu_blacklist` role:
+
+```text
+modprobe.blacklist=nouveau,amdgpu nouveau.modeset=0
+```
+
+Existing kernel arguments and other blacklisted modules are preserved. Ubuntu
+regenerates GRUB from a managed drop-in; Rocky updates all kernel boot entries
+and persists the defaults. The role verifies the generated boot arguments during
+the build. Existing modprobe and initramfs configuration remains in place.
+
+This prevents automatic loading of the distribution's GPU drivers before a
+runtime-installed driver can claim the device. AMD also documents blacklisting
+the inbox driver before installing an out-of-tree driver
+([AMD GPU Operator installation guide](https://instinct.docs.amd.com/projects/gpu-operator/en/latest/drivers/installation.html)).
+
+The blacklist applies to module names, so it also affects automatic loading of
+`amdgpu-dkms` on AMD images. The GPU Operator or an explicit `modprobe amdgpu`
+must load the installed module; no automatic loading service is added by the
+builder. A modprobe blacklist does not prevent loading a module explicitly by
+name without `--use-blacklist`
+([kmod documentation](https://github.com/kmod-project/kmod/blob/master/man/modprobe.d.5.scd)).
+
 ## Accelerator Variants
 
 `accel_provider` in `packer/config/common.json` selects the accelerator stack; the
 variant workflows patch it before building. `nvidia` pulls in `nvidia/doca`,
-`nvidia/cuda` and `vast`.
+`nvidia/cuda` and `vast`. Plain images disable nouveau in `node` instead, so the GPU
+Operator's driver can claim a passed-through GPU.
 
 The DOCA release the `nvidia/doca` role installs is `doca_version` in the same
 file (default `3.5.0`); override it with `-var doca_version=…` or a
@@ -262,9 +289,9 @@ The script is shared verbatim with edgestack-image-builder; change both copies
 together. `ib_ipoib` is loaded so an IB-only function is reachable by IP without
 a per-node modules-load entry.
 
-Plain images carry none of this: `linux-modules-extra` / `kernel-modules-extra`,
-and with them `mlx5_ib`, are installed only by `nvidia/doca`. A guest that needs
-an InfiniBand stack has to boot the DOCA image.
+Plain images carry none of this (no DOCA-OFED, `openibd` or `mlx-modules-ensure`),
+only the distro's in-tree `mlx5_ib` (Ubuntu `linux-modules-extra`, Rocky
+`kernel-modules`). Use the DOCA image for an InfiniBand stack.
 
 ## Upgrade Freeze
 
