@@ -1,10 +1,12 @@
 [Unit]
-Description=Load the Mellanox module stack when openibd left devices unbound
+Description=Load the Mellanox module stack when openibd left it half up
 Documentation=file:/usr/local/sbin/mlx-modules-ensure.sh
-# openibd unloads the OFED stack before loading it and aborts when sunrpc is
-# still pinned, leaving Mellanox VFs with no driver. Ordered after it (with no
-# dependency, so this runs whether it succeeded or failed) and before kubelet,
-# so the node always presents its NICs to workloads.
+# openibd unloads the OFED stack before loading it and aborts when a module is
+# still held (sunrpc, or mlx5_core once udev has loaded mlx5_ib), leaving
+# Mellanox functions with no driver or without mlx5_ib or the upper RDMA
+# modules. Ordered after it (with no dependency, so this runs whether it
+# succeeded or failed) and before kubelet, so the node always presents its NICs
+# to workloads.
 #
 # openibd itself runs far earlier (DefaultDependencies=false, WantedBy=
 # sysinit.target, Before=network.target remote-fs-pre.target). This unit keeps

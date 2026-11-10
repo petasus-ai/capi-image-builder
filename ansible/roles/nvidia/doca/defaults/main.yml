@@ -5,6 +5,11 @@ doca_base_prefix: "https://linux.mellanox.com/public/repo/doca"
 # through ansible-args.json.
 doca_version: "3.5.0"
 doca_ofed_package: "doca-ofed"
+# IPoIB on InfiniBand links. Off: the platform uses IB for RDMA only (no address
+# on IB links), and a node must not come up with or without an IPoIB netdev
+# depending on how the openibd boot race went. Sets IPOIB_LOAD in openib.conf and,
+# when off, makes `modprobe ib_ipoib` a no-op.
+doca_ipoib: false
 
 _doca_keyring_file: "doca_keyring.gpg"
 _trusted_key_path: "/etc/apt/keyrings/doca_keyring.gpg"

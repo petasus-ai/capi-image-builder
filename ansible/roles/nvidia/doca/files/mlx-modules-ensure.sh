@@ -1,28 +1,53 @@
 #!/bin/bash
-# openibd tears the OFED module stack down before it loads it -- its "start"
-# calls stop first -- and aborts when something still holds one of the modules.
-# On these nodes that is sunrpc, which DOCA-OFED replaces (NFSoRDMA) and which
-# rpcbind pins early in boot, so the service dies half way through:
+# Bring the Mellanox module stack up after openibd, and repair what an aborted
+# openibd start left behind.
 #
-#   openibd: Calling stop...
-#   rmmod: ERROR: Module sunrpc is in use
-#   openibd.service: Failed with result 'exit-code'
+# openibd's "start" begins with a "stop", and that stop aborts when one of the
+# modules it wants to unload is still held. Two holders are seen on these
+# images:
 #
-# The unload half has already run by then, so the node is left with mlx5_core
-# gone and its Mellanox VFs bound to no driver at all -- the netdev simply
-# disappears, taking SR-IOV, RDMA and any LNet mount with it. Whether the race
-# is lost depends on when sunrpc happens to be pinned, so it hits some nodes of
-# a cluster and not others.
+#   - sunrpc, which DOCA-OFED replaces for NFS-over-RDMA and which rpcbind, an
+#     NFS mount in /etc/fstab or an rpcrdma entry in /etc/modules-load.d can
+#     pin before openibd runs:
 #
-# Put the stack back for any Mellanox device that ended up driverless, and judge
-# the result by the netdev rather than by the driver binding, since the netdev is
-# what everything downstream consumes. Exits non-zero if a device is still
-# without one, so a node that could not be repaired shows up in systemctl
-# --failed instead of looking healthy. No-op on nodes where openibd succeeded.
+#       Unloading sunrpc                                        [FAILED]
+#       rmmod: ERROR: Module sunrpc is in use
 #
-# Scope: only devices that are bound to no driver at all. A device that is bound
-# yet exposes no interface is a different fault, and repairing it would mean
-# unbinding a live driver -- out of scope here.
+#   - mlx5_core itself, when udev has already probed the passed-through
+#     functions and loaded mlx5_ib before openibd gets to them:
+#
+#       rmmod: ERROR: Module mlx5_core is in use by: mlx5_ib
+#
+#   openibd.service: Main process exited, code=exited, status=1/FAILURE
+#
+# Whether the race is lost depends on boot timing, so it hits some boots and
+# not others, and it leaves the guest in one of two states:
+#
+#   - the unload half ran far enough to take mlx5_core with it, so the Mellanox
+#     functions (typically SR-IOV VFs) are bound to no driver and their netdevs
+#     are gone, taking RDMA and any LNet mount with them;
+#   - the functions (typically passed-through PFs) kept mlx5_core but the load
+#     half never ran, so mlx5_ib or the upper RDMA modules (ib_umad, rdma_ucm,
+#     ...) are missing and the node differs from one where openibd succeeded.
+#
+# The modprobe pass therefore runs unconditionally -- a driverless function is
+# not the only symptom -- and the rebinding pass covers the first state. The
+# result is judged per function by what everything downstream consumes: an
+# InfiniBand-link-layer port or a netdev. Exits non-zero when a Mellanox
+# function is left with neither, so a guest that could not be repaired shows up
+# in `systemctl --failed` instead of looking healthy.
+#
+# IPoIB follows openibd's own switch: ib_ipoib is loaded here only when the
+# last IPOIB_LOAD assignment in /etc/infiniband/openib.conf is yes. The image
+# build sets it to no by default (the platform uses InfiniBand for RDMA only and
+# gives IB links no address), so every node comes up the same whichever way
+# openibd went. Turning IPoIB on also needs /etc/modprobe.d/petasus-no-ipoib.conf,
+# which makes `modprobe ib_ipoib` a no-op, removed; the doca_ipoib role variable
+# does both.
+#
+# Shared verbatim between capi-image-builder and edgestack-image-builder (master
+# lines); change both copies together. The cilium-line copies predate the
+# IPoIB switch and always load ib_ipoib.
 set -u
 
 # systemd captures stdout into the journal under this unit, so there is no need
@@ -31,21 +56,33 @@ log() { echo "mlx-modules-ensure: $*"; }
 
 shopt -s nullglob
 
+mellanox=()
 driverless=()
 for dev in /sys/bus/pci/devices/*; do
     [ "$(cat "$dev/vendor" 2>/dev/null)" = "0x15b3" ] || continue
-    [ -e "$dev/driver" ] && continue
-    driverless+=("$(basename "$dev")")
+    mellanox+=("$(basename "$dev")")
+    [ -e "$dev/driver" ] || driverless+=("$(basename "$dev")")
 done
 
-if [ ${#driverless[@]} -eq 0 ]; then
-    log "no Mellanox device is missing its driver, nothing to do"
+if [ ${#mellanox[@]} -eq 0 ]; then
+    log "no Mellanox device present, nothing to do"
     exit 0
 fi
 
-log "Mellanox devices with no driver bound: ${driverless[*]}"
+log "Mellanox devices: ${mellanox[*]}"
+[ ${#driverless[@]} -eq 0 ] || log "with no driver bound: ${driverless[*]}"
 
-for mod in mlx5_core mlx5_ib ib_umad ib_uverbs rdma_ucm; do
+# mlx5_core first so the rebinding pass below has a driver to bind to.
+modules=(mlx5_core mlx5_ib ib_umad ib_uverbs rdma_ucm)
+# openibd sources the file, so the last assignment wins; judge that one alone.
+ipoib_load=$(grep -sE '^[[:space:]]*IPOIB_LOAD=' /etc/infiniband/openib.conf | tail -n1)
+if printf '%s\n' "$ipoib_load" | grep -qE '^[[:space:]]*IPOIB_LOAD=["'"'"']?yes["'"'"']?[[:space:]]*(#.*)?$'; then
+    modules+=(ib_ipoib)
+else
+    log "IPoIB is off (IPOIB_LOAD is not yes in /etc/infiniband/openib.conf), not loading ib_ipoib"
+fi
+
+for mod in "${modules[@]}"; do
     if err=$(modprobe "$mod" 2>&1); then
         # modprobe is a no-op, and still exits 0, when the module is already
         # resident -- so this says the module is present, not that it was loaded.
@@ -82,7 +119,7 @@ else
 fi
 
 unrepaired=0
-for pci in "${driverless[@]}"; do
+for pci in "${mellanox[@]}"; do
     dev="/sys/bus/pci/devices/$pci"
 
     if [ ! -e "$dev/driver" ]; then
@@ -92,25 +129,27 @@ for pci in "${driverless[@]}"; do
     fi
 
     driver=$(basename "$(readlink -f "$dev/driver")")
+
+    # An InfiniBand-link-layer port is the working interface on an IB fabric,
+    # and it appears only once mlx5_ib is loaded -- which is exactly what this
+    # script exists to guarantee. Check it before the netdev, since with IPoIB
+    # off an IB port has no netdev at all and still counts as repaired. Gate on
+    # the link layer: an Ethernet/RoCE function keeps its infiniband/ node too,
+    # and for one of those only the netdev below proves the stack is up.
+    for ibdev in "$dev"/infiniband/*; do
+        for port in "$ibdev"/ports/*; do
+            if [ "$(cat "$port/link_layer" 2>/dev/null)" = "InfiniBand" ]; then
+                log "$pci is bound to $driver, InfiniBand port $(basename "$ibdev")"
+                continue 3
+            fi
+        done
+    done
+
     netdevs=("$dev"/net/*)
     if [ ${#netdevs[@]} -gt 0 ]; then
         log "$pci is bound to $driver, netdev $(basename "${netdevs[0]}")"
         continue
     fi
-
-    # An InfiniBand-link-layer port exposes no netdev unless ib_ipoib is loaded,
-    # which this script deliberately does not pull in; its RDMA device is the
-    # working interface. Gate on the link layer: an Ethernet/RoCE function keeps
-    # its infiniband/ node too, so accepting that without the check would call a
-    # missing netdev a success on exactly the devices this exists to catch.
-    for ibdev in "$dev"/infiniband/*; do
-        for port in "$ibdev"/ports/*; do
-            if [ "$(cat "$port/link_layer" 2>/dev/null)" = "InfiniBand" ]; then
-                log "$pci is bound to $driver, InfiniBand port $(basename "$ibdev"), no netdev"
-                continue 3
-            fi
-        done
-    done
 
     log "$pci is bound to $driver but has no netdev and no InfiniBand port"
     unrepaired=1

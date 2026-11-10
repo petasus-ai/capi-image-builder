@@ -50,6 +50,44 @@
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
+# IPoIB is off unless doca_ipoib is set. The platform uses InfiniBand links for
+# RDMA only and gives them no address, and an IPoIB netdev that openibd brings up
+# on some boots and not others (see files/mlx-modules-ensure.sh) changes what DRA
+# network drivers publish and which interface NCCL bootstraps over. openibd reads
+# IPOIB_LOAD; mlx-modules-ensure.sh reads the same line.
+- name: Set IPoIB loading in openib.conf
+  lineinfile:
+    path: /etc/infiniband/openib.conf
+    regexp: '^\s*IPOIB_LOAD='
+    line: "IPOIB_LOAD={{ 'yes' if doca_ipoib | bool else 'no' }}"
+    create: yes
+    owner: root
+    group: root
+    mode: '0644'
+
+# IPOIB_LOAD only gates openibd and mlx-modules-ensure.sh. rdma-core's
+# rdma-load-modules@infiniband (/etc/rdma/modules/infiniband.conf), the
+# netdev-ib* alias and an explicit `modprobe ib_ipoib` load it too; a blacklist
+# stops the first two but not the last, so make every load a no-op.
+- name: Keep ib_ipoib from loading when IPoIB is off
+  copy:
+    dest: /etc/modprobe.d/petasus-no-ipoib.conf
+    content: |
+      # Managed by capi-image-builder (roles/nvidia/doca, doca_ipoib=false).
+      # InfiniBand links are RDMA-only on this platform; see
+      # /usr/local/sbin/mlx-modules-ensure.sh.
+      install ib_ipoib /bin/true
+    owner: root
+    group: root
+    mode: '0644'
+  when: not (doca_ipoib | bool)
+
+- name: Allow ib_ipoib when IPoIB is on
+  file:
+    path: /etc/modprobe.d/petasus-no-ipoib.conf
+    state: absent
+  when: doca_ipoib | bool
+
 # Not fatal on purpose: this is the very call that fails when a module is still
 # pinned (see files/mlx-modules-ensure.sh), and letting it abort the build would
 # make the image unbuildable for the reason the repair script exists to handle.
@@ -77,9 +115,10 @@
       {{ openibd_restart.msg | default('') }}
   when: openibd_restart.rc | default(1) != 0
 
-# openibd unloads the OFED stack before loading it, and aborts when sunrpc is
-# already pinned -- leaving Mellanox VFs bound to no driver, so their netdevs
-# vanish. It is a boot race, so it hits only some nodes of a cluster; see
+# openibd unloads the OFED stack before loading it, and aborts when a module is
+# still held (sunrpc, or mlx5_core once udev has loaded mlx5_ib) -- leaving
+# Mellanox functions either bound to no driver or without mlx5_ib or the upper
+# RDMA modules. It is a boot race, so it hits only some nodes of a cluster; see
 # files/mlx-modules-ensure.sh for the full failure mode.
 - name: Install Mellanox module reload script
   copy:
@@ -109,7 +148,7 @@
 - name: Reload Mellanox modules at image build time
   command: /usr/local/sbin/mlx-modules-ensure.sh
   register: mlx_modules_ensure
-  changed_when: "'no Mellanox device is missing its driver' not in mlx_modules_ensure.stdout"
+  changed_when: "'nothing to do' not in mlx_modules_ensure.stdout"
   failed_when: false
 
 # Non-zero means a device was left without a working interface. Not fatal --
