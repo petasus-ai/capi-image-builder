@@ -19,9 +19,12 @@ common_rpms:
 - chrony
 - curl
 - jq
+# A node with passthrough NVMe drives builds its local scratch volume with these at every boot.
+- lvm2
 - python3-pip
 - socat
 - sysstat
+- xfsprogs
 - yum-utils
 
 # Used for RedHat based distributions ==  8 (ex. RHEL-8, RockyLinux-8 etc.)
@@ -42,6 +45,8 @@ common_debs:
 - libnetfilter-acct1
 - libnetfilter-cttimeout1
 - libnetfilter-log1
+# A node with passthrough NVMe drives builds its local scratch volume with these at every boot.
+- lvm2
 # Generic metapackages keep the kernel image and headers current for the DKMS roles.
 - linux-image-generic
 - linux-headers-generic
@@ -49,6 +54,7 @@ common_debs:
 - python3-netifaces
 - python3-pip
 - socat
+- xfsprogs
 
 common_virt_rpms:
 - curl
