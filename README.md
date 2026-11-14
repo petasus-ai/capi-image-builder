@@ -116,6 +116,7 @@ customize             qemu-guest-agent (see Guest Agent), nerdctl
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 vast                  ┘
+usage_reports         no dnf countme, motd news or Ubuntu Pro APT news (see Usage Reports)
 manifest              collects the component inventory
 sysprep               kernel cleanup, cache purge, machine-id and log reset, fstab by UUID
 freeze                  accel_provider = nvidia; must stay last
@@ -128,7 +129,8 @@ inventory, and `sysprep` runs last because it starts removing the traces that
 inventory reads.
 
 Goss runs after Ansible as a Packer provisioner; its specs live in `packer/goss/`. On every
-image they assert that `/`, `/boot` and `/boot/efi` mount by filesystem UUID.
+image they assert that `/`, `/boot` and `/boot/efi` mount by filesystem UUID, and the settings
+under [Usage Reports](#usage-reports).
 The provisioner passes `accel_provider` through `vars_inline`, and on `nvidia`
 builds the command and file specs additionally assert that `openibd`,
 `mlx-modules-ensure` and `ofa-kernel-normalize` are enabled (`systemctl
@@ -173,6 +175,19 @@ command that a later QEMU adds stays off until someone reviews it.
 `packer/goss/goss-command.yaml` asserts both halves on every build: Rocky from
 the sysconfig allow-list, Ubuntu from `qemu-ga -D`, which prints the
 configuration the agent would run with.
+
+## Usage Reports
+
+A node image reports nothing about the machine it boots. `ansible/roles/usage_reports` runs
+after every role that adds a package repository:
+
+| Guest | What it would send | Setting |
+|---|---|---|
+| Rocky 10 | A `countme` flag with a repository's metalink request, once a week ([dnf](https://dnf.readthedocs.io/en/latest/conf_ref.html#countme-label)) | `countme=0` in `/etc/dnf/dnf.conf` and every `/etc/yum.repos.d/*.repo` that sets it, EPEL's included |
+| Ubuntu 24.04 | motd-news: the release, kernel, architecture, CPU model, uptime and cloud ([notice](https://ubuntu.com/legal/motd)); Ubuntu Pro's APT news | `ENABLED=0` in `/etc/default/motd-news`; `pro config set apt_news=false` ([how-to](https://documentation.ubuntu.com/pro-client/en/latest/howtoguides/disable_enable_apt_news/)) |
+
+`packer/goss/goss-command.yaml` asserts each setting. A repository file added on the node later
+with `countme=1` counts the machine.
 
 ## Kernel Currency
 

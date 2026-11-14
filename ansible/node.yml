@@ -58,6 +58,9 @@
     - include_role:
         name: vast
       when: accel_provider == "nvidia"
+    # After every role that adds a package repository.
+    - include_role:
+        name: usage_reports
     # After component installation: every component must already be installed, and
     # sysprep starts removing the traces the probes read.
     - include_role:

@@ -1,0 +1,50 @@
+---
+# The image reports nothing about the machine it boots: no package repository counts it, and
+# Ubuntu fetches neither the motd news nor Ubuntu Pro's APT news.
+
+# A repository's metalink request carries its countme flag, which counts the machine once a
+# week; a repository takes the flag from its own file or from dnf.conf's [main].
+- name: Find the package repositories
+  find:
+    paths: /etc/yum.repos.d
+    patterns: "*.repo"
+  register: usage_reports_repos
+  when: ansible_os_family == "RedHat"
+
+- name: Stop the package repositories counting the machine
+  replace:
+    path: "{{ item }}"
+    regexp: '^[ \t]*countme[ \t]*=.*$'
+    replace: countme=0
+  loop: "{{ ['/etc/dnf/dnf.conf'] + usage_reports_repos.files | default([]) | map(attribute='path') | list }}"
+  when: ansible_os_family == "RedHat"
+
+# motd-news sends the release, kernel, architecture, CPU model, uptime and cloud with its request.
+- name: Look for the motd news settings
+  stat:
+    path: /etc/default/motd-news
+  register: usage_reports_motd_news
+  when: ansible_os_family == "Debian"
+
+- name: Stop the motd news
+  lineinfile:
+    path: /etc/default/motd-news
+    regexp: '^ENABLED='
+    line: ENABLED=0
+  when:
+    - ansible_os_family == "Debian"
+    - usage_reports_motd_news.stat.exists
+
+- name: Read Ubuntu Pro's APT news setting
+  command: pro config show apt_news
+  register: usage_reports_apt_news
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "Debian"
+
+- name: Stop Ubuntu Pro's APT news
+  command: pro config set apt_news=false
+  when:
+    - ansible_os_family == "Debian"
+    - usage_reports_apt_news.rc == 0
+    - usage_reports_apt_news.stdout.split() != ['apt_news', 'False']

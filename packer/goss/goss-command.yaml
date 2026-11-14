@@ -159,6 +159,27 @@ command:
     timeout: 60000
 {{end}}
 {{end}}
+# ansible/roles/usage_reports: no package repository counts the node (dnf countme), and Ubuntu
+# fetches neither the motd news nor Ubuntu Pro's APT news.
+{{if eq .Vars.OS "rockylinux"}}
+  grep -hsE '^[[:space:]]*countme[[:space:]]*=' /etc/dnf/dnf.conf /etc/yum.repos.d/*.repo | grep -cvx 'countme=0':
+    exit-status: 1
+    stdout: ["/^0$/"]
+    stderr: []
+    timeout: 0
+{{end}}
+{{if eq .Vars.OS "ubuntu"}}
+  . /etc/default/motd-news && echo "ENABLED=$ENABLED":
+    exit-status: 0
+    stdout: ["/^ENABLED=0$/"]
+    stderr: []
+    timeout: 0
+  pro config show apt_news:
+    exit-status: 0
+    stdout: ["/^apt_news False$/"]
+    stderr: []
+    timeout: 0
+{{end}}
 {{range $name, $vers := index .Vars .Vars.OS .Vars.PROVIDER "command"}}
   {{ $name }}:
   {{range $key, $val := $vers}}
