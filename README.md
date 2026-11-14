@@ -112,7 +112,7 @@ load_additional_…     optional extra images and executables
 cni
 addons
 security
-customize             qemu-guest-agent (see Guest Agent), nerdctl, update-cert.sh
+customize             qemu-guest-agent (see Guest Agent), nerdctl
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 vast                  ┘

@@ -5,14 +5,6 @@
 - include_tasks: el_main.yml
   when: ansible_os_family == "RedHat"
 
-- name: copy update-cert.sh script
-  copy:
-    src: update-cert.sh
-    dest: /usr/bin/update-cert.sh
-    owner: root
-    group: root
-    mode: '0500'
-
 - name: download nerdctl binary
   get_url:
     url: https://github.com/containerd/nerdctl/releases/download/v2.3.3/nerdctl-2.3.3-linux-{{ distro_arch }}.tar.gz
