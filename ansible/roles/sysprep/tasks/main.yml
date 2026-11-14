@@ -26,6 +26,16 @@
 - import_tasks: redhat.yml
   when: ansible_os_family == "RedHat"
 
+# Filesystem labels can collide with labels on attached disks.
+- name: Mount /, /boot and /boot/efi by filesystem UUID
+  replace:
+    path: /etc/fstab
+    regexp: '^[^#\s]\S*([ \t]+{{ item.mount }}[ \t])'
+    replace: 'UUID={{ item.uuid }}\1'
+  loop: "{{ ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/efi']) | list }}"
+  loop_control:
+    label: "{{ item.mount }}"
+
 - name: Remove containerd http proxy conf file if needed
   file:
     path: /etc/systemd/system/containerd.service.d/http-proxy.conf

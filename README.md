@@ -117,7 +117,7 @@ nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 vast                  ┘
 manifest              collects the component inventory
-sysprep               kernel cleanup, cache purge, machine-id and log reset
+sysprep               kernel cleanup, cache purge, machine-id and log reset, fstab by UUID
 freeze                  accel_provider = nvidia; must stay last
 
 * setup is a meta dependency of node, not a separate entry in node.yml
@@ -127,7 +127,8 @@ freeze                  accel_provider = nvidia; must stay last
 inventory, and `sysprep` runs last because it starts removing the traces that
 inventory reads.
 
-Goss runs after Ansible as a Packer provisioner; its specs live in `packer/goss/`.
+Goss runs after Ansible as a Packer provisioner; its specs live in `packer/goss/`. On every
+image they assert that `/`, `/boot` and `/boot/efi` mount by filesystem UUID.
 The provisioner passes `accel_provider` through `vars_inline`, and on `nvidia`
 builds the command and file specs additionally assert that `openibd`,
 `mlx-modules-ensure` and `ofa-kernel-normalize` are enabled (`systemctl

@@ -1,4 +1,10 @@
 command:
+# The boot disk's filesystems mount by UUID, never by a label another disk can carry.
+  for m in / /boot /boot/efi; do s=$(awk -v m=$m '$1 !~ /^#/ && $2 == m {print $1}' /etc/fstab); d=$(blkid -U "${s#UUID=}"); [ "${s#UUID=}" != "$s" ] && [ -n "$d" ] && [ "$d" = "$(findmnt -no SOURCE $m)" ] || exit 1; done:
+    exit-status: 0
+    stdout: []
+    stderr: []
+    timeout: 0
   containerd --version | awk -F' ' '{print substr($3,2); }':
     exit-status: 0
     stdout: []
