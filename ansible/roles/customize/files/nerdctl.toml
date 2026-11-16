@@ -6,5 +6,4 @@ snapshotter       = "native"
 cni_path          = "/opt/cni/bin"
 cni_netconfpath   = "/etc/cni/net.d"
 cgroup_manager    = "systemd"
-insecure_registry = true
 hosts_dir         = ["/etc/containerd/certs.d"]

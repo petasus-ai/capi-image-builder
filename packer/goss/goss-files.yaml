@@ -15,6 +15,9 @@ file:
     - {{.}}
   {{end}}
 {{end}}
+# Registry host files belong to the node's consumer.
+  /etc/containerd/certs.d:
+    exists: false
 {{if ne .Vars.accel_provider "nvidia"}}
 # ansible/roles/node/tasks/nouveau.yml
   /etc/modprobe.d/blacklist-nouveau.conf:

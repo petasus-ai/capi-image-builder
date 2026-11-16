@@ -118,20 +118,6 @@
     path: /etc/containerd/conf.d
     state: directory
 
-# containerd 2.0 removed the CRI registry.mirrors/registry.configs settings;
-# per-registry endpoints and TLS options now live in certs.d hosts.toml files
-# referenced by the registry config_path in config.toml.
-- name: Creates containerd registry host config directory for harbor
-  file:
-    path: "/etc/containerd/certs.d/edgestack.harbor.core:32443"
-    state: directory
-
-- name: Copy in harbor registry hosts.toml
-  template:
-    dest: "/etc/containerd/certs.d/edgestack.harbor.core:32443/hosts.toml"
-    src: etc/containerd/certs.d/hosts.toml
-    mode: 0644
-
 - name: Copy in containerd config file {{ containerd_config_file }}
   template:
     dest: /etc/containerd/config.toml

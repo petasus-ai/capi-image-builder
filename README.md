@@ -106,13 +106,13 @@ setup*                repos, dist-upgrade, base packages
 node                  sysctls, kernel modules, swap off, auditd; nouveau off on plain images
 kernel                asserts the guest booted the newest kernel
 providers             cloud-init packages and service boot ordering
-containerd
+containerd            runtime; registry hosts are the consumer's (certs.d)
 kubernetes            kubelet/kubeadm/kubectl; pre-pulls the control-plane images
 load_additional_…     optional extra images and executables
 cni
 addons
 security
-customize             qemu-guest-agent (see Guest Agent), nerdctl, update-cert.sh
+customize             qemu-guest-agent (see Guest Agent), nerdctl
 nvidia/doca           ┐
 nvidia/cuda           │ accel_provider = nvidia
 vast                  ┘
