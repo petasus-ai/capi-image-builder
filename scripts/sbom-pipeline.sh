@@ -106,6 +106,33 @@ SYFT_CATALOGER_SELECT="-linux-kernel-cataloger,-python-package-cataloger"
 # the host SBOM.
 SYFT_EXCLUDE_CONTAINERD='./var/lib/containerd/**'
 
+# rpm 4.16+ (EL9 onward) keeps its sqlite database in WAL mode with a persistent
+# log, folding it into rpmdb.sqlite only when a read-write handle closes. syft's
+# rpm cataloger copies rpmdb.sqlite alone to a temp file and never reads the
+# -wal file, so every package the log still holds is silently missing from the
+# SBOM -- no error, just a shorter package list. AlmaLinux's 10.3 GenericCloud
+# base (20261116) shipped its last transaction unfolded in an 8 MB log: 20
+# installed packages (cloud-init, openssl and the python3 stack under them)
+# vanished, their RHEL CVEs went unreported, and the pip metadata they own was
+# graded as unowned PyPI packages. Builders fold the log at sysprep
+# (ansible/roles/sysprep/tasks/rpmdb_wal.yml); this refuses to publish an SBOM
+# of an image that slipped through, rather than an immutable, wrong one.
+#
+# Prints each non-empty rpmdb log under the guest root $1, one per line. Never
+# follows a symlink: EL10's /var/lib/rpm points at /usr/lib/sysimage/rpm, and an
+# absolute link resolved on the scanning host would report the HOST's database.
+# Self-contained (bash + wc only) because scan_in_container ships it into the
+# appliance container with `declare -f`.
+rpmdb_wal_report() {
+  local root=$1 rel dir wal
+  for rel in var/lib/rpm usr/lib/sysimage/rpm usr/share/rpm; do
+    dir="${root}/${rel}"
+    wal="${dir}/rpmdb.sqlite-wal"
+    [[ -d "$dir" && ! -L "$dir" && -f "$wal" && ! -L "$wal" && -s "$wal" ]] || continue
+    printf '/%s/rpmdb.sqlite-wal (%s bytes)\n' "$rel" "$(wc -c < "$wal" | tr -d ' ')"
+  done
+}
+
 WORK=""
 MNT=""
 PUBLISH_SKIPPED="false"
@@ -165,7 +192,7 @@ ensure_tools() {
 
 resolve_digest() {
   local repo=$1 tag=$2
-  skopeo inspect --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
+  skopeo inspect --retry-times 5 --format '{{.Digest}}' "docker://${REGISTRY}/${repo}:${tag}"
 }
 
 clone_mirror() {
@@ -202,10 +229,12 @@ scan_in_container() {
     -v "$WORK":/work:z \
     -v "$syft_bin":/usr/local/bin/syft:ro,z \
     "$FALLBACK_IMAGE_TAG" \
-    bash -c "set -euo pipefail
+    bash -c "$(declare -f rpmdb_wal_report)
+      set -euo pipefail
       export LIBGUESTFS_BACKEND=direct SYFT_FILE_METADATA_SELECTION=none
       mnt=\$(mktemp -d)
       guestmount -a '/in/${qname}' -i --ro \"\$mnt\"
+      rpmdb_wal_report \"\$mnt\" > /work/rpmdb-wal.txt
       syft scan \"dir:\$mnt\" -o spdx-json -q --select-catalogers '${SYFT_CATALOGER_SELECT}' --exclude '${SYFT_EXCLUDE_CONTAINERD}' --source-name '${REGISTRY}/${repo}' --source-version '${tag}' > /work/sbom-raw.json
       guestunmount \"\$mnt\""
 }
@@ -222,6 +251,7 @@ scan_qcow2() {
   MNT=$(mktemp -d)
   log "mounting ${qcow2} read-only"
   if guestmount -a "$qcow2" -i --ro "$MNT" 2> "$WORK/guestmount.err"; then
+    rpmdb_wal_report "$MNT" > "$WORK/rpmdb-wal.txt"
     log "scanning with syft (package-level, file catalog disabled)"
     SYFT_FILE_METADATA_SELECTION=none syft scan "dir:${MNT}" -o spdx-json -q \
       --select-catalogers "$SYFT_CATALOGER_SELECT" \
@@ -243,6 +273,14 @@ scan_qcow2() {
   log "hashing ${qcow2} (post-scan)"
   post=$(sha256sum "$qcow2" | awk '{print $1}')
   [[ "$pre" == "$post" ]] || die "qcow2 changed during scan (${pre} -> ${post})"
+
+  # See rpmdb_wal_report. Checked after the scan so one decision covers both
+  # the host and the container path.
+  if [[ -s "$WORK/rpmdb-wal.txt" ]]; then
+    local line
+    while IFS= read -r line; do log "unfolded rpm database log: ${line}"; done < "$WORK/rpmdb-wal.txt"
+    die "the guest's rpm database has an unfolded write-ahead log, which syft cannot read -- the SBOM would silently miss every package in it. Fold it in the image (ansible/roles/sysprep/tasks/rpmdb_wal.yml) and rebuild"
+  fi
 
   # Slim SBOM (spec v4): package-level only — drop file entries. But KEEP every
   # package<->package relationship (only file-referencing ones are dropped, since
@@ -316,16 +354,27 @@ publish_mirror() {
   fi
   git -C "$clone" commit -q -m "Add SBOM for ${repo}@sha256:${hex:0:12}"
 
-  local attempt
-  for attempt in 1 2 3; do
+  # Every matrix job (up to 18 per build), the sibling builder and the mirror's
+  # daily refresh push to this one branch, so a rejected push is routine. Retry
+  # with a jittered backoff so jobs that lost the same race do not retry in
+  # lockstep, and re-fetch right before each push so the rebase base is fresh.
+  # A failed rebase (transient fetch error, or a conflict, which the per-image
+  # path layout should never produce) is aborted and simply costs one attempt.
+  local attempt push_attempts=8
+  for attempt in $(seq 1 "$push_attempts"); do
     if GIT_TERMINAL_PROMPT=0 git -C "$clone" push -q origin "$MIRROR_BRANCH"; then
       log "mirror published: ${dest_rel}"
       return 0
     fi
-    log "push failed (attempt ${attempt}/3) — rebasing and retrying"
-    GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"
+    [[ $attempt -lt $push_attempts ]] || break
+    log "push failed (attempt ${attempt}/${push_attempts}) — backing off, rebasing and retrying"
+    sleep $((RANDOM % 10 + attempt * 3))
+    if ! GIT_TERMINAL_PROMPT=0 git -C "$clone" pull -q --rebase origin "$MIRROR_BRANCH"; then
+      log "rebase onto the mirror failed (attempt ${attempt}/${push_attempts}) — aborting it before the next try"
+      git -C "$clone" rebase --abort >/dev/null 2>&1 || true
+    fi
   done
-  die "failed to push to the mirror after 3 attempts"
+  die "failed to push to the mirror after ${push_attempts} attempts"
 }
 
 verify_raw() {

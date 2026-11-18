@@ -55,6 +55,9 @@
 - name: Remove yum package lists
   command: /usr/bin/yum -y clean all
 
+# After the last package operation of the build. See rpmdb_wal.yml.
+- import_tasks: rpmdb_wal.yml
+
 - name: Reset network interface IDs
   shell: sed -i '/^\(HWADDR\|UUID\)=/d' /etc/sysconfig/network-scripts/ifcfg-*
 
