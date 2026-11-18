@@ -1,0 +1,61 @@
+---
+# Fold the rpm database's write-ahead log back into rpmdb.sqlite.
+#
+# rpm 4.16+ (EL9 onward) keeps its sqlite database in WAL mode with a persistent
+# log, and folds the log into rpmdb.sqlite only when a read-write handle closes.
+# rpm itself reads both files, but syft, which writes the image SBOM, copies
+# rpmdb.sqlite alone and never opens the -wal file, so every package the log
+# still holds is missing from the SBOM. AlmaLinux's 10.3 GenericCloud base
+# (20261116) shipped its last transaction (cloud-init, openssl and the python3
+# stack under them) unfolded in an 8 MB log, and a build with nothing to upgrade
+# never opened the database for writing. 20 installed packages vanished from the
+# SBOM: their RHEL CVEs went unreported, and the pip metadata they own was
+# matched as unowned PyPI packages against GitHub advisories no dnf repo can fix.
+#
+# This runs the checkpoint rpm would run on close, after the build's last
+# package operation; everything later only reads the database. EL8's rpmdb is
+# Berkeley DB, which the stat gate skips. scripts/sbom-pipeline.sh refuses to
+# scan an image whose log is still non-empty.
+- name: Locate the rpm database
+  command: rpm --eval '%{_dbpath}'
+  register: _rpmdb_path
+  changed_when: false
+
+- name: Check whether the rpm database is sqlite
+  stat:
+    path: "{{ _rpmdb_path.stdout }}/rpmdb.sqlite"
+  register: _rpmdb_sqlite
+
+# -I keeps the build's PYTHONPATH and user site out of the interpreter: only the
+# stdlib sqlite3 module is needed. A reader holding the database open makes the
+# checkpoint report busy, which fails the task rather than leaving the log.
+- name: Fold the rpm database's write-ahead log into rpmdb.sqlite
+  shell: |
+    set -euo pipefail
+    db='{{ _rpmdb_path.stdout }}/rpmdb.sqlite'
+    wal_before=0
+    if [ -f "$db-wal" ]; then wal_before=$(wc -c < "$db-wal" | tr -d ' '); fi
+    pkgs_before=$(rpm -qa | wc -l | tr -d ' ')
+    '{{ ansible_python.executable }}' -I - "$db" <<'EOF'
+    import sqlite3, sys
+    con = sqlite3.connect(sys.argv[1], timeout=60)
+    busy = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()[0]
+    con.close()
+    if busy:
+        sys.exit("rpmdb is in use: its write-ahead log could not be folded")
+    EOF
+    pkgs_after=$(rpm -qa | wc -l | tr -d ' ')
+    if [ -s "$db-wal" ]; then
+      echo "the write-ahead log still holds $(wc -c < "$db-wal" | tr -d ' ') bytes" >&2
+      exit 1
+    fi
+    if [ "$pkgs_before" != "$pkgs_after" ]; then
+      echo "rpm -qa listed $pkgs_before packages before the fold and $pkgs_after after" >&2
+      exit 1
+    fi
+    echo "folded ${wal_before} bytes of write-ahead log, ${pkgs_after} packages"
+  args:
+    executable: /bin/bash
+  register: _rpmdb_fold
+  changed_when: not _rpmdb_fold.stdout.startswith('folded 0 bytes')
+  when: _rpmdb_sqlite.stat.exists

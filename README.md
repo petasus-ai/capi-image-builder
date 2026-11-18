@@ -319,6 +319,15 @@ before and after and the build fails if it changed.
   autoclean keeps the archive of the version actually installed, and syft
   catalogued each of those a second time from the `.deb` — with a different purl
   from the dpkg-derived entry, so no consumer could merge the two.
+* **rpm database write-ahead log.** EL9 and later keep the rpm database in
+  SQLite WAL mode, and rpm folds the log into `rpmdb.sqlite` only when it closes
+  the database for writing. syft reads `rpmdb.sqlite` alone, so any package still
+  in the log is silently missing from the SBOM. AlmaLinux's 10.3 GenericCloud
+  base shipped its cloud-init transaction unfolded, and a build with nothing to
+  upgrade passed it through: 20 installed packages, `openssl` included, vanished
+  from the SBOM. EL sysprep folds the log after the last package operation
+  (`roles/sysprep/tasks/rpmdb_wal.yml`), and the stage refuses to scan an image
+  whose log is still non-empty rather than publish an incomplete SBOM.
 * **Idempotency.** The stage is a no-op when the digest already has an SBOM;
   `SBOM_FORCE=true` bypasses that for manual repair.
 * **Fallback.** libguestfs boots its appliance with a kernel from the local
