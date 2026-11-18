@@ -36,7 +36,7 @@
     wal_before=0
     if [ -f "$db-wal" ]; then wal_before=$(wc -c < "$db-wal" | tr -d ' '); fi
     pkgs_before=$(rpm -qa | wc -l | tr -d ' ')
-    '{{ ansible_python.executable }}' -I - "$db" <<'EOF'
+    '{{ ansible_facts.python.executable }}' -I - "$db" <<'EOF'
     import sqlite3, sys
     con = sqlite3.connect(sys.argv[1], timeout=60)
     busy = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()[0]
