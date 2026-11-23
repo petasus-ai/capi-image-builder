@@ -63,3 +63,40 @@
   file:
     path: /tmp/nerdctl.tar.gz
     state: absent
+
+- name: download helm
+  get_url:
+    url: "https://get.helm.sh/helm-v{{ helm_version }}-linux-{{ distro_arch }}.tar.gz"
+    dest: /tmp/helm.tar.gz
+    checksum: "sha256:https://get.helm.sh/helm-v{{ helm_version }}-linux-{{ distro_arch }}.tar.gz.sha256sum"
+    mode: '0600'
+
+- name: creates helm tmp directory
+  file:
+    path: /tmp/helm
+    state: directory
+
+- name: uncompress helm
+  unarchive:
+    src: /tmp/helm.tar.gz
+    dest: /tmp/helm
+    remote_src: yes
+
+- name: install helm binary to /usr/local/bin
+  copy:
+    src: "/tmp/helm/linux-{{ distro_arch }}/helm"
+    dest: /usr/local/bin/helm
+    owner: root
+    group: root
+    mode: '0755'
+    remote_src: yes
+
+- name: remove helm directory
+  file:
+    path: /tmp/helm
+    state: absent
+
+- name: remove helm archive
+  file:
+    path: /tmp/helm.tar.gz
+    state: absent

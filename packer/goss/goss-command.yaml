@@ -15,6 +15,11 @@ command:
     stdout: []
     stderr: []
     timeout: 0
+  /usr/local/bin/helm version --short:
+    exit-status: 0
+    stdout: ["/^v3\\./"]
+    stderr: []
+    timeout: 0
 # The pause image containerd pins for pod sandboxes must be present in the
 # local image cache. A miss sends containerd to the upstream registry, which is
 # fatal on air-gapped nodes: no pod sandbox can be created, so no static

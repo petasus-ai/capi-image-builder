@@ -48,3 +48,6 @@ guest_agent_allow_rpcs:
   - guest-get-cpustats
   - guest-network-get-route
   - guest-get-load
+
+# Helm on every node image, for a cluster's administrator on a control-plane node.
+helm_version: "3.22.1"
